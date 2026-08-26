@@ -13,6 +13,7 @@ Read `PANTRYOS_IMPLEMENTATION_PLAN.md` before implementation. Keep it concise an
 - Treat `document.modelContext` as current; isolate any navigator fallback.
 - Validate every tool input with Zod and publish a matching JSON Schema.
 - Do not depend on `requestUserInteraction()`.
+- Do not send `Permissions-Policy: tools=()` or add framing restrictions without testing the exact ChatGPT/Chrome judging surface.
 - Never commit secrets, origin-trial tokens, kitchen data, `.dev.vars`, or `.env` files.
 - Do not claim agent processing stays on-device.
 - Preserve unrelated user changes. Do not commit, push, deploy, or submit unless the user explicitly asks.
