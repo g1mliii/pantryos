@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { PageIntro } from "../components/ui/PageIntro";
+import { PageIntro } from "../components/ui";
 
 export function RecipeDetailPage() {
   const { recipeId } = useParams();
@@ -12,7 +12,7 @@ export function RecipeDetailPage() {
         title={recipeId ?? "Recipe"}
       />
       <Link
-        className="mt-8 inline-block text-lime-400 hover:text-lime-300"
+        className="mt-8 inline-block border-b border-copper-mid pb-[3px] text-copper-deep hover:text-copper"
         to="/recipes"
       >
         ← Back to recipes

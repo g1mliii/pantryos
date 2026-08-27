@@ -16,4 +16,32 @@ describe("PantryOS app shell", () => {
     ).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeTruthy();
   });
+
+  it.each([
+    ["/kitchen", /know what you have/i],
+    ["/recipes", /cook what matters first/i],
+    ["/recipes/chicken-saag", /chicken-saag/i],
+    ["/groceries", /only buy what is missing/i],
+    ["/debug", /inspect the tool surface/i],
+  ])("loads the %s route", (path, heading) => {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
+  });
+
+  it("redirects unknown routes to the dashboard", () => {
+    render(
+      <MemoryRouter initialEntries={["/not-a-route"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /give your kitchen/i }),
+    ).toBeTruthy();
+  });
 });

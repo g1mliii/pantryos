@@ -6,6 +6,10 @@ Read `PANTRYOS_IMPLEMENTATION_PLAN.md` before implementation. Keep it concise an
 
 ## Working rules
 
+- Read `.claude/skills/pantryos-ui` before writing any UI; `design/*.dc.html` is the visual source of truth.
+- Compose `src/components/ui/` primitives. Add new ones there, never inline in a route.
+- Use `@theme` tokens from `src/styles.css`. No hex values and no `rounded-*` in components.
+- Animate only `opacity` and `transform`. Never transition height, top, width or box-shadow.
 - Use npm and Node 24.
 - Keep the app client-only unless the user explicitly changes scope.
 - UI and WebMCP tools must call the same domain actions.

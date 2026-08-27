@@ -1,19 +1,19 @@
 interface PageIntroProps {
+  description?: string;
   eyebrow: string;
   title: string;
-  description: string;
 }
 
-export function PageIntro({ eyebrow, title, description }: PageIntroProps) {
+export function PageIntro({ description, eyebrow, title }: PageIntroProps) {
   return (
-    <section className="max-w-3xl">
-      <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-lime-400">
-        {eyebrow}
-      </p>
-      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+    <section className="max-w-2xl">
+      <p className="label-caps mb-[18px] text-copper">{eyebrow}</p>
+      <h1 className="font-serif text-[52px] leading-[1.1] font-light tracking-[-0.015em] text-pretty">
         {title}
       </h1>
-      <p className="mt-5 text-lg leading-8 text-stone-300">{description}</p>
+      {description ? (
+        <p className="mt-4 text-base leading-7 text-ink-muted">{description}</p>
+      ) : null}
     </section>
   );
 }

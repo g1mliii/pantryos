@@ -1,4 +1,4 @@
-import { PageIntro } from "../components/ui/PageIntro";
+import { PageIntro } from "../components/ui";
 
 export function GroceriesPage() {
   return (

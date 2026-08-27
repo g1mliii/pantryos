@@ -12,3 +12,6 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+
+# Generated design canvas (2MB payload; re-seed from design/*.dc.html)
+design/pantryos-ui.html

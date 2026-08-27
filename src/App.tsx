@@ -5,6 +5,7 @@ import { GroceriesPage } from "./routes/GroceriesPage";
 import { KitchenPage } from "./routes/KitchenPage";
 import { RecipeDetailPage } from "./routes/RecipeDetailPage";
 import { RecipesPage } from "./routes/RecipesPage";
+import { useFoundationSmokeStatus } from "./webmcp/use-foundation-smoke";
 
 const navigation = [
   ["/", "Dashboard"],
@@ -14,21 +15,25 @@ const navigation = [
 ] as const;
 
 export default function App() {
+  const webMcpStatus = useFoundationSmokeStatus();
+
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="border-b border-white/10 bg-stone-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-4">
-          <NavLink className="text-xl font-semibold tracking-tight" to="/">
-            Pantry<span className="text-lime-400">OS</span>
+    <div className="min-h-screen bg-paper text-ink">
+      <div aria-hidden="true" className="h-[5px] bg-copper" />
+
+      <header className="border-b border-rule">
+        <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-6 px-10 py-5">
+          <NavLink className="font-serif text-[25px] tracking-[0.01em]" to="/">
+            Pantry<span className="text-copper">OS</span>
           </NavLink>
-          <nav aria-label="Primary" className="flex flex-wrap gap-1">
+          <nav aria-label="Primary" className="flex flex-wrap gap-[34px]">
             {navigation.map(([to, label]) => (
               <NavLink
                 className={({ isActive }) =>
-                  `rounded-full px-3 py-2 text-sm transition ${
+                  `pb-[3px] text-sm tracking-[0.02em] ${
                     isActive
-                      ? "bg-lime-400 text-stone-950"
-                      : "text-stone-300 hover:bg-white/10 hover:text-white"
+                      ? "border-b-[3px] border-copper text-ink"
+                      : "text-ink-muted hover:text-copper-deep"
                   }`
                 }
                 end={to === "/"}
@@ -42,16 +47,23 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-10">
+      <main className="mx-auto max-w-[1240px] px-10 py-13">
         <Routes>
-          <Route element={<DashboardPage />} path="/" />
+          <Route
+            element={<DashboardPage webMcpStatus={webMcpStatus} />}
+            path="/"
+          />
           <Route element={<KitchenPage />} path="/kitchen" />
           <Route element={<RecipesPage />} path="/recipes" />
           <Route element={<RecipeDetailPage />} path="/recipes/:recipeId" />
           <Route element={<GroceriesPage />} path="/groceries" />
           <Route
             element={
-              import.meta.env.DEV ? <DebugPage /> : <Navigate replace to="/" />
+              import.meta.env.DEV ? (
+                <DebugPage webMcpStatus={webMcpStatus} />
+              ) : (
+                <Navigate replace to="/" />
+              )
             }
             path="/debug"
           />
