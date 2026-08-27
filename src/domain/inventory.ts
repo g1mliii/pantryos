@@ -1,0 +1,209 @@
+import {
+  inventoryConsumptionSchema,
+  inventoryDraftSchema,
+  inventoryEditSchema,
+  type InventoryConsumption,
+  type InventoryDraft,
+  type InventoryEdit,
+  type InventoryItem,
+  type Location,
+} from "../schemas/inventory";
+import { sortByUseFirst } from "./expiry";
+import { areUnitsCompatible, toCanonicalAmount } from "./units";
+
+const INVENTORY_ALIASES: Record<string, string> = { chicken: "chicken breast" };
+
+export type InventoryErrorCode =
+  "INCOMPATIBLE_UNIT" | "ITEM_NOT_FOUND" | "OVER_CONSUMPTION";
+
+export class InventoryDomainError extends Error {
+  constructor(
+    public readonly code: InventoryErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "InventoryDomainError";
+  }
+}
+
+export function normalizeInventoryName(name: string) {
+  const normalized = name
+    .toLocaleLowerCase("en-CA")
+    .trim()
+    .replace(/[’']/g, "")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return INVENTORY_ALIASES[normalized] ?? normalized;
+}
+
+function readableIdBase(name: string) {
+  return (
+    normalizeInventoryName(name)
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "item"
+  );
+}
+
+export function createReadableInventoryId(
+  name: string,
+  existingIds: Iterable<string>,
+) {
+  const base = readableIdBase(name);
+  const used = new Set(existingIds);
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
+function findItem(items: readonly InventoryItem[], itemId: string) {
+  const item = items.find((candidate) => candidate.id === itemId);
+  if (!item) {
+    throw new InventoryDomainError(
+      "ITEM_NOT_FOUND",
+      `No inventory item has id "${itemId}".`,
+    );
+  }
+  return item;
+}
+
+export function addInventoryItem(
+  items: readonly InventoryItem[],
+  input: InventoryDraft,
+  now = new Date(),
+) {
+  const draft = inventoryDraftSchema.parse(input);
+  const amount = toCanonicalAmount(draft.quantity, draft.unit);
+  const timestamp = now.toISOString();
+  const item: InventoryItem = {
+    id: createReadableInventoryId(
+      draft.name,
+      items.map((item) => item.id),
+    ),
+    name: draft.name.trim(),
+    normalizedName: normalizeInventoryName(draft.name),
+    quantity: amount.quantity,
+    canonicalUnit: amount.canonicalUnit,
+    displayUnit: draft.unit,
+    location: draft.location,
+    expiryDate: draft.expiryDate ?? null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  return { item, items: [...items, item] };
+}
+
+export function editInventoryItem(
+  items: readonly InventoryItem[],
+  itemId: string,
+  input: InventoryEdit,
+  now = new Date(),
+) {
+  const changes = inventoryEditSchema.parse(input);
+  const current = findItem(items, itemId);
+  const displayUnit = changes.unit ?? current.displayUnit;
+  let quantity = current.quantity;
+  let canonicalUnit = current.canonicalUnit;
+  if (changes.quantity !== undefined) {
+    const amount = toCanonicalAmount(changes.quantity, displayUnit);
+    quantity = amount.quantity;
+    canonicalUnit = amount.canonicalUnit;
+  } else if (!areUnitsCompatible(current.canonicalUnit, displayUnit)) {
+    throw new InventoryDomainError(
+      "INCOMPATIBLE_UNIT",
+      `${current.name} is stored in ${current.canonicalUnit}; ${displayUnit} is not compatible.`,
+    );
+  }
+  const name = changes.name?.trim() ?? current.name;
+  const item: InventoryItem = {
+    ...current,
+    name,
+    normalizedName: normalizeInventoryName(name),
+    quantity,
+    canonicalUnit,
+    displayUnit,
+    location: changes.location ?? current.location,
+    expiryDate:
+      changes.expiryDate === undefined
+        ? current.expiryDate
+        : changes.expiryDate,
+    updatedAt: now.toISOString(),
+  };
+  return {
+    item,
+    items: items.map((candidate) =>
+      candidate.id === itemId ? item : candidate,
+    ),
+  };
+}
+
+export function consumeInventoryItem(
+  items: readonly InventoryItem[],
+  itemId: string,
+  input?: InventoryConsumption,
+  now = new Date(),
+) {
+  const current = findItem(items, itemId);
+  if (!input) {
+    return { item: current, items: items.filter((item) => item.id !== itemId) };
+  }
+  const consumption = inventoryConsumptionSchema.parse(input);
+  const amount = toCanonicalAmount(consumption.quantity, consumption.unit);
+  if (amount.canonicalUnit !== current.canonicalUnit) {
+    throw new InventoryDomainError(
+      "INCOMPATIBLE_UNIT",
+      `${consumption.unit} cannot be used to consume ${current.name}, which is stored in ${current.canonicalUnit}.`,
+    );
+  }
+  if (amount.quantity > current.quantity) {
+    throw new InventoryDomainError(
+      "OVER_CONSUMPTION",
+      `Cannot consume more than the available ${current.quantity} ${current.canonicalUnit}.`,
+    );
+  }
+  if (amount.quantity === current.quantity) {
+    return { item: current, items: items.filter((item) => item.id !== itemId) };
+  }
+  const item = {
+    ...current,
+    quantity: Number((current.quantity - amount.quantity).toFixed(6)),
+    updatedAt: now.toISOString(),
+  };
+  return {
+    item,
+    items: items.map((candidate) =>
+      candidate.id === itemId ? item : candidate,
+    ),
+  };
+}
+
+export function removeInventoryItem(
+  items: readonly InventoryItem[],
+  itemId: string,
+) {
+  const item = findItem(items, itemId);
+  return { item, items: items.filter((candidate) => candidate.id !== itemId) };
+}
+
+export function groupInventoryByLocation(
+  items: readonly InventoryItem[],
+  today = new Date(),
+): Record<Location, InventoryItem[]> {
+  return {
+    fridge: sortByUseFirst(
+      items.filter((item) => item.location === "fridge"),
+      today,
+    ),
+    freezer: sortByUseFirst(
+      items.filter((item) => item.location === "freezer"),
+      today,
+    ),
+    pantry: sortByUseFirst(
+      items.filter((item) => item.location === "pantry"),
+      today,
+    ),
+  };
+}

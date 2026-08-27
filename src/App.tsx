@@ -1,10 +1,12 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { ConfirmationDialog } from "./components/ui";
 import { DashboardPage } from "./routes/DashboardPage";
 import { DebugPage } from "./routes/DebugPage";
 import { GroceriesPage } from "./routes/GroceriesPage";
 import { KitchenPage } from "./routes/KitchenPage";
 import { RecipeDetailPage } from "./routes/RecipeDetailPage";
 import { RecipesPage } from "./routes/RecipesPage";
+import { useKitchenStore } from "./stores/kitchen-store";
 import { useFoundationSmokeStatus } from "./webmcp/use-foundation-smoke";
 
 const navigation = [
@@ -15,10 +17,14 @@ const navigation = [
 ] as const;
 
 export default function App() {
-  const webMcpStatus = useFoundationSmokeStatus();
+  const kitchenReady = useKitchenStore(
+    (state) => state.hasHydrated && state.hasInitialized,
+  );
+  const webMcpStatus = useFoundationSmokeStatus(kitchenReady);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
+      <ConfirmationDialog />
       <div aria-hidden="true" className="h-[5px] bg-copper" />
 
       <header className="border-b border-rule">
@@ -48,27 +54,31 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-[1240px] px-10 py-13">
-        <Routes>
-          <Route
-            element={<DashboardPage webMcpStatus={webMcpStatus} />}
-            path="/"
-          />
-          <Route element={<KitchenPage />} path="/kitchen" />
-          <Route element={<RecipesPage />} path="/recipes" />
-          <Route element={<RecipeDetailPage />} path="/recipes/:recipeId" />
-          <Route element={<GroceriesPage />} path="/groceries" />
-          <Route
-            element={
-              import.meta.env.DEV ? (
-                <DebugPage webMcpStatus={webMcpStatus} />
-              ) : (
-                <Navigate replace to="/" />
-              )
-            }
-            path="/debug"
-          />
-          <Route element={<Navigate replace to="/" />} path="*" />
-        </Routes>
+        {kitchenReady ? (
+          <Routes>
+            <Route
+              element={<DashboardPage webMcpStatus={webMcpStatus} />}
+              path="/"
+            />
+            <Route element={<KitchenPage />} path="/kitchen" />
+            <Route element={<RecipesPage />} path="/recipes" />
+            <Route element={<RecipeDetailPage />} path="/recipes/:recipeId" />
+            <Route element={<GroceriesPage />} path="/groceries" />
+            <Route
+              element={
+                import.meta.env.DEV ? (
+                  <DebugPage webMcpStatus={webMcpStatus} />
+                ) : (
+                  <Navigate replace to="/" />
+                )
+              }
+              path="/debug"
+            />
+            <Route element={<Navigate replace to="/" />} path="*" />
+          </Routes>
+        ) : (
+          <p className="font-serif text-2xl">Preparing your kitchen…</p>
+        )}
       </main>
     </div>
   );

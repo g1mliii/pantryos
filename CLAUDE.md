@@ -19,24 +19,24 @@ Scaffolded and working:
 
 - Vite + React 19 + strict TypeScript + React Router shell (`src/App.tsx`, `src/main.tsx`)
 - Tailwind CSS 4 via `@tailwindcss/vite`, with the paper/copper `@theme` design system
-- All six routes exist; every product route is still placeholder copy
+- All six routes exist; the dashboard and kitchen implement Phase 1 inventory/expiry, while recipe and grocery routes remain placeholders
 - Cloudflare Workers Static Assets configured (`wrangler.jsonc`, serves `dist/`, SPA fallback)
 - CI (`npm run verify` + `npm run deploy:dry`) and deploy workflows
 - Dependencies installed, including `webmcp-types`
 - Design system applied: paper/copper `@theme` tokens in `src/styles.css`, restyled shell
-- `src/components/ui/` primitives: `Button`, `CoverageBar`, `FreshnessMarker`, `PageIntro`, `SectionHeading`, `Select`, `TickBox`
+- `src/components/ui/` primitives: `Button`, `Callout`, `ConfirmationDialog`, `CoverageBar`, `FreshnessMarker`, `PageIntro`, `SectionHeading`, `Select`, `TextField`, `TickBox`
 - `design/` artboards (7) are the visual source of truth; `design/pantryos-ui.html` is generated and gitignored
+
+Implemented product foundation:
+
+- Inventory units, schemas, expiry helpers, demo data, versioned persistence, CRUD, Use First, and the shared destructive-confirmation surface
 - `src/webmcp/` contains the Phase 0 compatibility adapter and one read-only smoke tool
 
 Not built yet:
 
-- Inventory units, schemas, expiry helpers, demo data, persistence, CRUD, and Use First
-- `ConfirmationDialog` and `TextField` primitives, and the shared destructive-confirmation surface
 - Recipe matching and curated recipe data
 - Grocery state and actions
 - The ten product WebMCP tools and Agent Activity rail
-
-Phase 1 (inventory/expiry) is in progress on `codex/phase-1-inventory-expiry`, not on `main`. Do not assume `src/domain/`, `src/schemas/`, `src/stores/`, or `src/data/` exist here — on `main` they do not.
 
 ## Commands
 
