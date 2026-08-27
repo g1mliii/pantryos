@@ -1,0 +1,13 @@
+# Prettier is configured for LF (its default). Windows checkouts with
+# core.autocrlf=true would otherwise write CRLF and fail `npm run format:check`
+# after every branch switch, even though the committed blobs are correct.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
