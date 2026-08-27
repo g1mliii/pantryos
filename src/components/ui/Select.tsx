@@ -73,7 +73,6 @@ export function Select<T extends string = string>({
     if (open) listRef.current?.focus();
   }, [open]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- ref identity is stable
   useEffect(() => () => window.clearTimeout(typeahead.current.timer), []);
 
   function onListKeyDown(event: React.KeyboardEvent<HTMLUListElement>) {
