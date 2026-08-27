@@ -1,71 +1,157 @@
+import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { Callout, PageIntro, SectionHeading } from "../components/ui";
+import {
+  Button,
+  FreshnessMarker,
+  PageIntro,
+  SectionHeading,
+} from "../components/ui";
+import { getExpiryDetails, getUseFirstItems } from "../domain/expiry";
+import { countInventoryByLocation } from "../domain/inventory";
+import { capitalize, pluralize, spellNumber } from "../domain/number-words";
+import { formatQuantity } from "../domain/units";
+import { requestConfirmation } from "../stores/confirmation-store";
+import { useKitchenStore } from "../stores/kitchen-store";
+import { useToday } from "../stores/today-store";
 import type { SmokeRegistrationStatus } from "../webmcp/foundation-smoke";
-
-const features = [
-  ["Kitchen", "Track what is here and what goes off first.", "/kitchen"],
-  ["Recipes", "Match meals against what should be used up.", "/recipes"],
-  ["Groceries", "Collect what is missing, without duplicates.", "/groceries"],
-] as const;
 
 interface DashboardPageProps {
   webMcpStatus: SmokeRegistrationStatus;
 }
 
-const statusCopy: Record<SmokeRegistrationStatus["state"], [string, string]> = {
-  registering: [
-    "Checking WebMCP…",
-    "PantryOS is asking this browser whether the foundation smoke tool can register.",
-  ],
-  ready: [
-    "Foundation smoke tool ready.",
-    "A single read-only tool is registered for Phase 0 inspection. Product tools remain out of scope.",
-  ],
-  unavailable: [
-    "No WebMCP in this browser.",
-    "The app still works normally. Enable a compatible browser build to inspect the foundation smoke tool.",
-  ],
-  error: [
-    "WebMCP registration failed.",
-    "The app remains usable; open the development debug route for the reported registration state.",
-  ],
-};
-
 export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
-  const [statusTitle, statusDescription] = statusCopy[webMcpStatus.state];
+  const inventory = useKitchenStore((state) => state.inventory);
+  const resetDemo = useKitchenStore((state) => state.resetDemo);
+  const today = useToday();
+  const useFirst = getUseFirstItems(inventory, today, 3);
+  const locationCounts = countInventoryByLocation(inventory);
+  const amount = capitalize(spellNumber(useFirst.length));
+  const title =
+    useFirst.length === 0
+      ? "Nothing needs using in the next three days."
+      : `${amount} ${pluralize(useFirst.length, "thing wants", "things want")} using soon.`;
+
+  async function confirmReset() {
+    const decision = await requestConfirmation({
+      cancelLabel: "Keep my kitchen",
+      confirmLabel: "Reset it",
+      description:
+        "This replaces the whole kitchen with the demo one. Anything you or your agent put in is lost, and it cannot be undone.",
+      eyebrow: "Before the kitchen is replaced",
+      title: "Reset the demo kitchen?",
+    });
+    if (decision === "confirmed") resetDemo();
+  }
 
   return (
     <>
       <PageIntro
-        description="A local-first kitchen that people and browser-aware agents operate together, through the same domain actions."
-        eyebrow="Foundation ready"
-        title="Give your kitchen a precise agent interface."
+        description={
+          useFirst.length === 0
+            ? "Your dated inventory is clear for now."
+            : `${useFirst[0]?.name ?? "Something"} goes first. Expired food stays visible until you decide what to do with it.`
+        }
+        eyebrow={format(today, "EEEE, d MMMM")}
+        title={title}
       />
 
-      <div className="mt-14">
-        <SectionHeading meta="3 sections">Where things live</SectionHeading>
-        <div className="mt-1">
-          {features.map(([title, description, to]) => (
-            <Link
-              className="flex items-baseline justify-between gap-8 border-b border-rule-soft py-[26px] hover:text-copper-deep"
-              key={to}
-              to={to}
-            >
-              <h3 className="font-serif text-[28px] leading-8">{title}</h3>
-              <p className="grow text-[15px] leading-[25px] text-ink-muted">
-                {description}
-              </p>
-            </Link>
-          ))}
+      <section className="mt-14">
+        <SectionHeading
+          meta={`${useFirst.length} ${pluralize(useFirst.length, "item")}`}
+        >
+          Use first
+        </SectionHeading>
+        {useFirst.length === 0 ? (
+          <p className="border-b border-rule-soft py-6 text-ink-muted">
+            Nothing expires within three days. Check the full kitchen for later
+            dates.
+          </p>
+        ) : (
+          useFirst.map((item) => {
+            const expiry = getExpiryDetails(item.expiryDate, today);
+            return (
+              <div
+                className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-rule-soft px-0.5 py-[18px] last:border-b-0"
+                key={item.id}
+              >
+                <span className="min-w-52 grow font-serif text-2xl">
+                  {item.name}
+                </span>
+                <span className="w-24 text-[15px] text-ink-muted">
+                  {formatQuantity(item)}
+                </span>
+                <span className="w-16 text-[13px] text-ink-faint capitalize">
+                  {item.location}
+                </span>
+                <FreshnessMarker
+                  daysRemaining={expiry.daysRemaining ?? undefined}
+                  label={expiry.label}
+                  status={expiry.status}
+                />
+              </div>
+            );
+          })
+        )}
+      </section>
+
+      <section className="mt-12 grid bg-paper-sunk sm:grid-cols-3">
+        {(
+          [
+            ["Fridge", locationCounts.fridge],
+            ["Pantry", locationCounts.pantry],
+            ["Freezer", locationCounts.freezer],
+          ] as const
+        ).map(([label, count]) => (
+          <div
+            className="border-b border-rule-warm px-6 py-5 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0"
+            key={label}
+          >
+            <span className="font-serif text-[40px] leading-none font-light text-copper">
+              {count}
+            </span>
+            <span className="mt-1 block text-xs font-semibold tracking-[0.14em] text-ink-muted uppercase">
+              {label}
+            </span>
+          </div>
+        ))}
+      </section>
+
+      <section className="mt-12">
+        <SectionHeading>Try asking your agent</SectionHeading>
+        <div className="pt-4">
+          <p className="font-serif text-[17px] leading-7 text-ink-soft italic">
+            “What's expiring soon?”
+          </p>
+          <p className="mt-3.5 font-serif text-[17px] leading-7 text-ink-soft italic">
+            “Find dinner under 30 minutes using what expires first.”
+          </p>
+          <p className="mt-3.5 font-serif text-[17px] leading-7 text-ink-soft italic">
+            “Add what I'm missing to groceries.”
+          </p>
+        </div>
+      </section>
+
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-6 border-t border-rule pt-7">
+        <div>
+          <p className="font-serif text-xl">
+            Kitchen state lives in this browser.
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">
+            WebMCP foundation status: {webMcpStatus.state}.
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
+          <Link
+            className="border-b border-rule-warm pb-0.5 text-sm text-copper-deep"
+            to="/kitchen"
+          >
+            Open the kitchen
+          </Link>
+          <Button onClick={() => void confirmReset()} variant="secondary">
+            Reset Demo
+          </Button>
         </div>
       </div>
-
-      <Callout className="mt-14 max-w-xl">
-        <p className="font-serif text-xl">{statusTitle}</p>
-        <p className="mt-2 text-[15px] leading-[26px] text-ink-muted">
-          {statusDescription}
-        </p>
-      </Callout>
     </>
   );
 }

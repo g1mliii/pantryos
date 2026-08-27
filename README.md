@@ -4,7 +4,7 @@
 
 PantryOS is a local-first kitchen inventory and recipe demo for the WebMCP Challenge. The human UI and WebMCP tools will operate the same browser-resident state through shared domain actions.
 
-> Current status: Phase 0 is implemented — the design system, the shared UI primitives, and a read-only WebMCP smoke tool. The product routes are still placeholders. Inventory/expiry, recipe matching, groceries, and the ten product WebMCP tools remain to be built.
+> Current status: Phase 0 and the Phase 1 inventory/expiry slice are implemented. Recipe matching, groceries, and the ten product WebMCP tools remain to be built.
 
 ## Why WebMCP fits
 
