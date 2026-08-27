@@ -7,6 +7,7 @@ import {
   SectionHeading,
 } from "../components/ui";
 import { getExpiryDetails, getUseFirstItems } from "../domain/expiry";
+import { capitalize, spellNumber } from "../domain/number-words";
 import { formatQuantity } from "../domain/units";
 import { useKitchenStore } from "../stores/kitchen-store";
 import type { SmokeRegistrationStatus } from "../webmcp/foundation-smoke";
@@ -14,8 +15,6 @@ import type { SmokeRegistrationStatus } from "../webmcp/foundation-smoke";
 interface DashboardPageProps {
   webMcpStatus: SmokeRegistrationStatus;
 }
-
-const NUMBER_WORDS = ["No", "One", "Two", "Three"] as const;
 
 export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
   const inventory = useKitchenStore((state) => state.inventory);
@@ -27,7 +26,7 @@ export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
     freezer: inventory.filter((item) => item.location === "freezer").length,
     pantry: inventory.filter((item) => item.location === "pantry").length,
   };
-  const amount = NUMBER_WORDS[useFirst.length] ?? String(useFirst.length);
+  const amount = capitalize(spellNumber(useFirst.length));
   const title =
     useFirst.length === 0
       ? "Nothing needs using in the next three days."

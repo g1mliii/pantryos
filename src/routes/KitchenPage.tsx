@@ -6,6 +6,7 @@ import {
 import { InventorySection } from "../components/kitchen/InventorySection";
 import { Button, PageIntro } from "../components/ui";
 import { groupInventoryByLocation } from "../domain/inventory";
+import { capitalize, spellNumber } from "../domain/number-words";
 import { formatQuantity } from "../domain/units";
 import type { InventoryItem, Location } from "../schemas/inventory";
 import { requestConfirmation } from "../stores/confirmation-store";
@@ -22,8 +23,7 @@ const LOCATIONS: readonly Location[] = ["fridge", "pantry", "freezer"];
 function countLabel(count: number) {
   if (count === 0) return "Nothing here";
   if (count === 1) return "One thing";
-  if (count === 13) return "Thirteen things";
-  return `${count} things`;
+  return `${capitalize(spellNumber(count))} things`;
 }
 
 export function KitchenPage() {
