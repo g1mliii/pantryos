@@ -20,6 +20,23 @@ function closeDialog(dialog: HTMLDialogElement) {
   else dialog.removeAttribute("open");
 }
 
+/** The page region focus falls back to; App puts this on its `<main>`. */
+export const MAIN_REGION_ID = "pantryos-main";
+
+/**
+ * Confirming a removal unmounts the row that opened the dialog, so the saved
+ * element is often detached by the time it closes and `.focus()` on it is a
+ * no-op that drops the caret to `<body>`. Fall back to the page region so a
+ * keyboard user keeps their place.
+ */
+function restoreFocus(previous: HTMLElement | null) {
+  if (previous?.isConnected) {
+    previous.focus();
+    return;
+  }
+  document.getElementById(MAIN_REGION_ID)?.focus();
+}
+
 export function ConfirmationDialog() {
   const prompt = useConfirmationStore((state) => state.prompt);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -40,7 +57,7 @@ export function ConfirmationDialog() {
     }
 
     closeDialog(dialog);
-    previousFocusRef.current?.focus();
+    restoreFocus(previousFocusRef.current);
     previousFocusRef.current = null;
   }, [prompt]);
 

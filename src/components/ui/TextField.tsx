@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 interface TextFieldProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -8,15 +8,26 @@ interface TextFieldProps extends Omit<
   label: string;
 }
 
+/**
+ * The caption above a field. `Select` exposes its label only to assistive
+ * technology, so the screens that use one need this same caption beside it —
+ * hence one component rather than the class string copied per call site.
+ */
+export function FieldCaption({ children }: { children: ReactNode }) {
+  return (
+    <span className="mb-2 block text-xs font-semibold tracking-[0.14em] text-ink-faint uppercase">
+      {children}
+    </span>
+  );
+}
+
 export function TextField({ error, id, label, ...props }: TextFieldProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const errorId = `${inputId}-error`;
   return (
     <label className="block text-sm text-ink-soft" htmlFor={inputId}>
-      <span className="mb-2 block text-xs font-semibold tracking-[0.14em] text-ink-faint uppercase">
-        {label}
-      </span>
+      <FieldCaption>{label}</FieldCaption>
       <input
         aria-describedby={error ? errorId : undefined}
         aria-invalid={Boolean(error)}

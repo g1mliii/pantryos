@@ -11,6 +11,7 @@ import { formatQuantity } from "../domain/units";
 import type { InventoryItem, Location } from "../schemas/inventory";
 import { requestConfirmation } from "../stores/confirmation-store";
 import { useKitchenStore } from "../stores/kitchen-store";
+import { useToday } from "../stores/today-store";
 
 interface OpenForm {
   initialLocation?: Location;
@@ -30,7 +31,7 @@ export function KitchenPage() {
   const inventory = useKitchenStore((state) => state.inventory);
   const removeInventory = useKitchenStore((state) => state.removeInventory);
   const [openForm, setOpenForm] = useState<OpenForm | null>(null);
-  const today = useMemo(() => new Date(), []);
+  const today = useToday();
   const groups = useMemo(
     () => groupInventoryByLocation(inventory, today),
     [inventory, today],
@@ -46,7 +47,12 @@ export function KitchenPage() {
     });
     if (decision !== "confirmed") return;
 
-    removeInventory(item.id);
+    try {
+      removeInventory(item.id);
+    } catch {
+      // The item went while the dialog was open — an agent tool consuming the
+      // last of it, or another tab. Nothing left to throw out either way.
+    }
     if (openForm?.item?.id === item.id) setOpenForm(null);
   }
 

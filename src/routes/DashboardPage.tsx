@@ -7,9 +7,12 @@ import {
   SectionHeading,
 } from "../components/ui";
 import { getExpiryDetails, getUseFirstItems } from "../domain/expiry";
-import { capitalize, spellNumber } from "../domain/number-words";
+import { countInventoryByLocation } from "../domain/inventory";
+import { capitalize, pluralize, spellNumber } from "../domain/number-words";
 import { formatQuantity } from "../domain/units";
+import { requestConfirmation } from "../stores/confirmation-store";
 import { useKitchenStore } from "../stores/kitchen-store";
+import { useToday } from "../stores/today-store";
 import type { SmokeRegistrationStatus } from "../webmcp/foundation-smoke";
 
 interface DashboardPageProps {
@@ -19,18 +22,26 @@ interface DashboardPageProps {
 export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
   const inventory = useKitchenStore((state) => state.inventory);
   const resetDemo = useKitchenStore((state) => state.resetDemo);
-  const today = new Date();
+  const today = useToday();
   const useFirst = getUseFirstItems(inventory, today, 3);
-  const locationCounts = {
-    fridge: inventory.filter((item) => item.location === "fridge").length,
-    freezer: inventory.filter((item) => item.location === "freezer").length,
-    pantry: inventory.filter((item) => item.location === "pantry").length,
-  };
+  const locationCounts = countInventoryByLocation(inventory);
   const amount = capitalize(spellNumber(useFirst.length));
   const title =
     useFirst.length === 0
       ? "Nothing needs using in the next three days."
-      : `${amount} ${useFirst.length === 1 ? "thing wants" : "things want"} using soon.`;
+      : `${amount} ${pluralize(useFirst.length, "thing wants", "things want")} using soon.`;
+
+  async function confirmReset() {
+    const decision = await requestConfirmation({
+      cancelLabel: "Keep my kitchen",
+      confirmLabel: "Reset it",
+      description:
+        "This replaces the whole kitchen with the demo one. Anything you or your agent put in is lost, and it cannot be undone.",
+      eyebrow: "Before the kitchen is replaced",
+      title: "Reset the demo kitchen?",
+    });
+    if (decision === "confirmed") resetDemo();
+  }
 
   return (
     <>
@@ -45,7 +56,9 @@ export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
       />
 
       <section className="mt-14">
-        <SectionHeading meta={`${useFirst.length} items`}>
+        <SectionHeading
+          meta={`${useFirst.length} ${pluralize(useFirst.length, "item")}`}
+        >
           Use first
         </SectionHeading>
         {useFirst.length === 0 ? (
@@ -134,7 +147,7 @@ export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
           >
             Open the kitchen
           </Link>
-          <Button onClick={resetDemo} variant="secondary">
+          <Button onClick={() => void confirmReset()} variant="secondary">
             Reset Demo
           </Button>
         </div>

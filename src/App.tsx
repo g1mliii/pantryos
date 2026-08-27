@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { ConfirmationDialog } from "./components/ui";
+import { ConfirmationDialog, MAIN_REGION_ID } from "./components/ui";
 import { DashboardPage } from "./routes/DashboardPage";
 import { DebugPage } from "./routes/DebugPage";
 import { GroceriesPage } from "./routes/GroceriesPage";
@@ -53,7 +53,13 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1240px] px-10 py-13">
+      {/* id and tabIndex give ConfirmationDialog somewhere to return focus
+          when the element that opened it has since been removed. */}
+      <main
+        className="mx-auto max-w-[1240px] px-10 py-13 outline-none"
+        id={MAIN_REGION_ID}
+        tabIndex={-1}
+      >
         {kitchenReady ? (
           <Routes>
             <Route

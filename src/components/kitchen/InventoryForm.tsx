@@ -1,12 +1,20 @@
 import { useState, type FormEvent } from "react";
-import { fromCanonicalAmount } from "../../domain/units";
+import {
+  describeInventoryError,
+  LOCATION_LABELS,
+} from "../../domain/inventory";
+import {
+  areUnitsCompatible,
+  fromCanonicalAmount,
+  toCanonicalAmount,
+} from "../../domain/units";
 import type {
   DisplayUnit,
   InventoryItem,
   Location,
 } from "../../schemas/inventory";
 import { useKitchenStore } from "../../stores/kitchen-store";
-import { Button, Select, TextField } from "../ui";
+import { Button, FieldCaption, Select, TextField } from "../ui";
 
 export type InventoryFormMode = "add" | "consume" | "edit";
 
@@ -27,11 +35,12 @@ const UNIT_OPTIONS = [
   { label: "servings", value: "serving" },
 ] as const;
 
-const LOCATION_OPTIONS = [
-  { label: "Fridge", value: "fridge" },
-  { label: "Freezer", value: "freezer" },
-  { label: "Pantry", value: "pantry" },
-] as const;
+const LOCATION_OPTIONS = Object.entries(LOCATION_LABELS).map(
+  ([value, label]) => ({ label, value }),
+);
+
+/** Matches inputQuantitySchema, so the browser catches the ceiling first. */
+const MAX_QUANTITY = 1_000_000;
 
 export function InventoryForm({
   initialLocation = "fridge",
@@ -52,6 +61,23 @@ export function InventoryForm({
   );
   const [expiryDate, setExpiryDate] = useState(item?.expiryDate ?? "");
   const [error, setError] = useState("");
+
+  /**
+   * The quantity is written in the selected unit, so switching g → kg has to
+   * carry the amount across with it. Without this, 600 g silently becomes
+   * 600 kg. Units that measure different things (g → count) leave the number
+   * alone, because it is a genuinely different quantity.
+   */
+  function changeUnit(nextUnit: DisplayUnit) {
+    const parsed = Number(quantity);
+    if (quantity.trim() !== "" && Number.isFinite(parsed) && parsed > 0) {
+      const current = toCanonicalAmount(parsed, unit);
+      if (areUnitsCompatible(current.canonicalUnit, nextUnit)) {
+        setQuantity(String(fromCanonicalAmount(current.quantity, nextUnit)));
+      }
+    }
+    setUnit(nextUnit);
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -78,9 +104,7 @@ export function InventoryForm({
       }
       onClose();
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to save item.",
-      );
+      setError(describeInventoryError(caught));
     }
   }
 
@@ -116,6 +140,7 @@ export function InventoryForm({
         >
           <TextField
             label={mode === "consume" ? "Amount used" : "Quantity"}
+            max={MAX_QUANTITY}
             min="0.000001"
             onChange={(event) => setQuantity(event.target.value)}
             required
@@ -124,12 +149,10 @@ export function InventoryForm({
             value={quantity}
           />
           <div>
-            <span className="mb-2 block text-xs font-semibold tracking-[0.14em] text-ink-faint uppercase">
-              Unit
-            </span>
+            <FieldCaption>Unit</FieldCaption>
             <Select
               label="Unit"
-              onChange={(value) => setUnit(value as DisplayUnit)}
+              onChange={(value) => changeUnit(value as DisplayUnit)}
               options={[...UNIT_OPTIONS]}
               value={unit}
             />
@@ -139,13 +162,11 @@ export function InventoryForm({
         {mode !== "consume" ? (
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
-              <span className="mb-2 block text-xs font-semibold tracking-[0.14em] text-ink-faint uppercase">
-                Location
-              </span>
+              <FieldCaption>Location</FieldCaption>
               <Select
                 label="Location"
                 onChange={(value) => setLocation(value as Location)}
-                options={[...LOCATION_OPTIONS]}
+                options={LOCATION_OPTIONS}
                 value={location}
               />
             </div>

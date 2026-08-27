@@ -1,19 +1,50 @@
-import { describe, expect, it } from "vitest";
-import { createJSONStorage, type StateStorage } from "zustand/middleware";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createJSONStorage,
+  type PersistStorage,
+  type StateStorage,
+} from "zustand/middleware";
 import { toLocalCalendarDate } from "../domain/expiry";
 import {
   createKitchenStore,
+  KITCHEN_SCHEMA_VERSION,
+  KITCHEN_STORAGE_KEY,
   type PersistedKitchenState,
 } from "./kitchen-store";
 
-function memoryStorage() {
-  const values = new Map<string, string>();
+const AT_NINE = new Date(2026, 7, 26, 9);
+
+const STORED_ITEM = {
+  id: "leftover-soup",
+  name: "Leftover soup",
+  normalizedName: "leftover soup",
+  quantity: 500,
+  canonicalUnit: "ml",
+  displayUnit: "ml",
+  location: "fridge",
+  expiryDate: "2026-08-30",
+  createdAt: "2026-08-26T09:00:00.000Z",
+  updatedAt: "2026-08-26T09:00:00.000Z",
+};
+
+function memoryStorage(values = new Map<string, string>()) {
   const storage: StateStorage = {
     getItem: (name) => values.get(name) ?? null,
     setItem: (name, value) => values.set(name, value),
     removeItem: (name) => values.delete(name),
   };
   return createJSONStorage<PersistedKitchenState>(() => storage);
+}
+
+function seededStorage(state: unknown) {
+  return memoryStorage(
+    new Map([
+      [
+        KITCHEN_STORAGE_KEY,
+        JSON.stringify({ state, version: KITCHEN_SCHEMA_VERSION }),
+      ],
+    ]),
+  );
 }
 
 describe("kitchen persistence and initialization", () => {
@@ -72,5 +103,55 @@ describe("kitchen persistence and initialization", () => {
     expect(
       resetInventory.find((item) => item.id === "chicken-breast")?.quantity,
     ).toBe(600);
+  });
+});
+
+describe("kitchen recovery from damaged storage", () => {
+  it("keeps the readable rows when one stored item is unusable", () => {
+    const store = createKitchenStore({
+      now: () => AT_NINE,
+      storage: seededStorage({
+        schemaVersion: KITCHEN_SCHEMA_VERSION,
+        hasInitialized: true,
+        inventory: [STORED_ITEM, { id: "mystery", surprise: true }],
+      }),
+    });
+
+    // Re-seeding here would silently replace the whole kitchen with the demo.
+    expect(store.getState().hasHydrated).toBe(true);
+    expect(store.getState().hasInitialized).toBe(true);
+    expect(store.getState().inventory.map((item) => item.id)).toEqual([
+      "leftover-soup",
+    ]);
+  });
+
+  it("opens a working kitchen when stored state cannot be read at all", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const storage: PersistStorage<PersistedKitchenState> = {
+      getItem: () => {
+        throw new Error("storage blocked");
+      },
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    };
+
+    const store = createKitchenStore({ now: () => AT_NINE, storage });
+
+    // App gates every route on hasHydrated, so this is the difference between
+    // a degraded kitchen and a permanent loading screen.
+    expect(store.getState().hasHydrated).toBe(true);
+    expect(store.getState().inventory).toHaveLength(13);
+    warn.mockRestore();
+  });
+
+  it("clears a corrupt payload rather than failing the load", () => {
+    localStorage.setItem(KITCHEN_STORAGE_KEY, "{ not json");
+
+    const store = createKitchenStore({ now: () => AT_NINE });
+
+    expect(store.getState().hasHydrated).toBe(true);
+    expect(store.getState().inventory).toHaveLength(13);
+    expect(localStorage.getItem(KITCHEN_STORAGE_KEY)).not.toContain("not json");
+    localStorage.removeItem(KITCHEN_STORAGE_KEY);
   });
 });

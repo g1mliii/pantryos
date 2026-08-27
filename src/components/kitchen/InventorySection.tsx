@@ -1,4 +1,6 @@
 import { getExpiryDetails } from "../../domain/expiry";
+import { LOCATION_LABELS } from "../../domain/inventory";
+import { pluralize } from "../../domain/number-words";
 import { formatQuantity } from "../../domain/units";
 import type { InventoryItem, Location } from "../../schemas/inventory";
 import { Button, FreshnessMarker, SectionHeading } from "../ui";
@@ -13,12 +15,6 @@ interface InventorySectionProps {
   today: Date;
 }
 
-const LOCATION_LABELS: Record<Location, string> = {
-  fridge: "Fridge",
-  freezer: "Freezer",
-  pantry: "Pantry",
-};
-
 export function InventorySection({
   items,
   location,
@@ -28,16 +24,21 @@ export function InventorySection({
   onRemove,
   today,
 }: InventorySectionProps) {
-  const dated = items.filter((item) => item.expiryDate !== null);
-  const urgentCount = dated.filter((item) => {
-    const days = getExpiryDetails(item.expiryDate, today).daysRemaining;
-    return days !== null && days <= 3;
-  }).length;
+  // Read once per item and reused by the row below, rather than dated once for
+  // the count and again while rendering.
+  const rows = items.map((item) => ({
+    expiry: getExpiryDetails(item.expiryDate, today),
+    item,
+  }));
+  const datedCount = rows.filter(({ item }) => item.expiryDate !== null).length;
+  const urgentCount = rows.filter(
+    ({ expiry }) => expiry.daysRemaining !== null && expiry.daysRemaining <= 3,
+  ).length;
   const meta =
     urgentCount > 0
-      ? `${urgentCount} want using`
-      : dated.length > 0
-        ? `${dated.length} dated`
+      ? `${urgentCount} ${pluralize(urgentCount, "wants", "want")} using`
+      : datedCount > 0
+        ? `${datedCount} dated`
         : "nothing dated";
 
   return (
@@ -63,8 +64,7 @@ export function InventorySection({
             location === "pantry" ? "md:grid md:grid-cols-2 md:gap-x-12" : ""
           }
         >
-          {items.map((item) => {
-            const expiry = getExpiryDetails(item.expiryDate, today);
+          {rows.map(({ expiry, item }) => {
             return (
               <article
                 className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-rule-soft px-0.5 py-4 last:border-b-0"

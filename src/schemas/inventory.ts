@@ -54,10 +54,27 @@ export const inventoryItemSchema = z
   })
   .strict();
 
+/**
+ * These messages reach both the agent, as a tool error, and the person, in the
+ * inventory form. Zod's defaults ("Too small: expected string to have >=1
+ * characters") serve neither, so the input schemas carry their own.
+ */
+const inputNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Give the item a name")
+  .max(120, "Keep the name to 120 characters or fewer");
+
+const inputQuantitySchema = z
+  .number()
+  .finite()
+  .positive("Use a quantity greater than zero")
+  .max(1_000_000, "That quantity is larger than one kitchen can hold");
+
 export const inventoryDraftSchema = z
   .object({
-    name: z.string().trim().min(1).max(120),
-    quantity: z.number().finite().positive().max(1_000_000),
+    name: inputNameSchema,
+    quantity: inputQuantitySchema,
     unit: displayUnitSchema,
     location: locationSchema,
     expiryDate: localCalendarDateSchema.nullable().optional(),
@@ -66,8 +83,8 @@ export const inventoryDraftSchema = z
 
 export const inventoryEditSchema = z
   .object({
-    name: z.string().trim().min(1).max(120).optional(),
-    quantity: z.number().finite().positive().max(1_000_000).optional(),
+    name: inputNameSchema.optional(),
+    quantity: inputQuantitySchema.optional(),
     unit: displayUnitSchema.optional(),
     location: locationSchema.optional(),
     expiryDate: localCalendarDateSchema.nullable().optional(),
@@ -79,7 +96,7 @@ export const inventoryEditSchema = z
 
 export const inventoryConsumptionSchema = z
   .object({
-    quantity: z.number().finite().positive().max(1_000_000),
+    quantity: inputQuantitySchema,
     unit: displayUnitSchema,
   })
   .strict();

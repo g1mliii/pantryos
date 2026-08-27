@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import {
   inventoryConsumptionSchema,
   inventoryDraftSchema,
@@ -11,7 +12,18 @@ import {
 import { sortByUseFirst } from "./expiry";
 import { areUnitsCompatible, toCanonicalAmount } from "./units";
 
-const INVENTORY_ALIASES: Record<string, string> = { chicken: "chicken breast" };
+// A Map, not an object literal: a plain object would resolve names like
+// "constructor" or "toString" to inherited prototype members.
+const INVENTORY_ALIASES = new Map<string, string>([
+  ["chicken", "chicken breast"],
+]);
+
+/** One spelling of each location, shared by every surface that names one. */
+export const LOCATION_LABELS: Record<Location, string> = {
+  fridge: "Fridge",
+  freezer: "Freezer",
+  pantry: "Pantry",
+};
 
 export type InventoryErrorCode =
   "INCOMPATIBLE_UNIT" | "ITEM_NOT_FOUND" | "OVER_CONSUMPTION";
@@ -26,6 +38,21 @@ export class InventoryDomainError extends Error {
   }
 }
 
+/**
+ * One readable sentence for anything these actions throw. The WebMCP tools hit
+ * the same failures as the form and must report them the same way, so the
+ * shaping belongs beside the actions rather than inside a component.
+ */
+export function describeInventoryError(caught: unknown): string {
+  if (caught instanceof InventoryDomainError) return caught.message;
+  // ZodError.message is a JSON dump of every issue; the first one is the one
+  // that can actually be acted on.
+  if (caught instanceof ZodError) {
+    return caught.issues[0]?.message ?? "That inventory change was not valid.";
+  }
+  return "That inventory change was not valid.";
+}
+
 export function normalizeInventoryName(name: string) {
   const normalized = name
     .toLocaleLowerCase("en-CA")
@@ -34,7 +61,7 @@ export function normalizeInventoryName(name: string) {
     .replace(/[^\p{L}\p{N}\s]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return INVENTORY_ALIASES[normalized] ?? normalized;
+  return INVENTORY_ALIASES.get(normalized) ?? normalized;
 }
 
 function readableIdBase(name: string) {
@@ -105,25 +132,24 @@ export function editInventoryItem(
   const changes = inventoryEditSchema.parse(input);
   const current = findItem(items, itemId);
   const displayUnit = changes.unit ?? current.displayUnit;
-  let quantity = current.quantity;
-  let canonicalUnit = current.canonicalUnit;
-  if (changes.quantity !== undefined) {
-    const amount = toCanonicalAmount(changes.quantity, displayUnit);
-    quantity = amount.quantity;
-    canonicalUnit = amount.canonicalUnit;
-  } else if (!areUnitsCompatible(current.canonicalUnit, displayUnit)) {
+  // Checked unconditionally: an edit that also carries a quantity must not be
+  // allowed to silently rewrite the canonical unit an item is stored in.
+  if (!areUnitsCompatible(current.canonicalUnit, displayUnit)) {
     throw new InventoryDomainError(
       "INCOMPATIBLE_UNIT",
       `${current.name} is stored in ${current.canonicalUnit}; ${displayUnit} is not compatible.`,
     );
   }
+  const quantity =
+    changes.quantity === undefined
+      ? current.quantity
+      : toCanonicalAmount(changes.quantity, displayUnit).quantity;
   const name = changes.name?.trim() ?? current.name;
   const item: InventoryItem = {
     ...current,
     name,
     normalizedName: normalizeInventoryName(name),
     quantity,
-    canonicalUnit,
     displayUnit,
     location: changes.location ?? current.location,
     expiryDate:
@@ -186,6 +212,15 @@ export function removeInventoryItem(
 ) {
   const item = findItem(items, itemId);
   return { item, items: items.filter((candidate) => candidate.id !== itemId) };
+}
+
+/** Per-location totals in one pass; no ordering work, unlike grouping. */
+export function countInventoryByLocation(
+  items: readonly InventoryItem[],
+): Record<Location, number> {
+  const counts: Record<Location, number> = { fridge: 0, freezer: 0, pantry: 0 };
+  for (const item of items) counts[item.location] += 1;
+  return counts;
 }
 
 export function groupInventoryByLocation(

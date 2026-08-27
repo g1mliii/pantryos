@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capitalize, spellNumber } from "./number-words";
+import { capitalize, pluralize, spellNumber } from "./number-words";
 
 describe("spellNumber", () => {
   it.each([
@@ -32,5 +32,18 @@ describe("capitalize", () => {
 
   it("is safe on an empty string", () => {
     expect(capitalize("")).toBe("");
+  });
+});
+
+describe("pluralize", () => {
+  it("uses the singular for one and the plural for everything else", () => {
+    expect(pluralize(1, "item")).toBe("item");
+    expect(pluralize(0, "item")).toBe("items");
+    expect(pluralize(4, "item")).toBe("items");
+  });
+
+  it("takes an irregular plural when the default will not do", () => {
+    expect(pluralize(1, "wants", "want")).toBe("wants");
+    expect(pluralize(3, "thing wants", "things want")).toBe("things want");
   });
 });

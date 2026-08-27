@@ -38,3 +38,16 @@ export function spellNumber(value: number): string {
 export function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+/**
+ * Picks the form that agrees with a count. Recipes, groceries and the tool
+ * summaries all need the same choice, so it lives here rather than as another
+ * inline ternary per surface.
+ */
+export function pluralize(
+  count: number,
+  singular: string,
+  plural = `${singular}s`,
+): string {
+  return count === 1 ? singular : plural;
+}

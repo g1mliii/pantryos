@@ -1,6 +1,6 @@
 export { Button } from "./Button";
 export { Callout } from "./Callout";
-export { ConfirmationDialog } from "./ConfirmationDialog";
+export { ConfirmationDialog, MAIN_REGION_ID } from "./ConfirmationDialog";
 export { CoverageBar } from "./CoverageBar";
 export { FreshnessMarker } from "./FreshnessMarker";
 export type { FreshnessStatus } from "./FreshnessMarker";
@@ -8,5 +8,5 @@ export { PageIntro } from "./PageIntro";
 export { SectionHeading } from "./SectionHeading";
 export { Select } from "./Select";
 export type { SelectOption } from "./Select";
-export { TextField } from "./TextField";
+export { FieldCaption, TextField } from "./TextField";
 export { TickBox } from "./TickBox";
