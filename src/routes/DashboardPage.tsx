@@ -13,13 +13,7 @@ import { formatQuantity } from "../domain/units";
 import { requestConfirmation } from "../stores/confirmation-store";
 import { useKitchenStore } from "../stores/kitchen-store";
 import { useToday } from "../stores/today-store";
-import type { SmokeRegistrationStatus } from "../webmcp/foundation-smoke";
-
-interface DashboardPageProps {
-  webMcpStatus: SmokeRegistrationStatus;
-}
-
-export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
+export function DashboardPage() {
   const inventory = useKitchenStore((state) => state.inventory);
   const resetDemo = useKitchenStore((state) => state.resetDemo);
   const today = useToday();
@@ -137,7 +131,7 @@ export function DashboardPage({ webMcpStatus }: DashboardPageProps) {
             Kitchen state lives in this browser.
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            WebMCP foundation status: {webMcpStatus.state}.
+            The interface and agent tools use the same local kitchen actions.
           </p>
         </div>
         <div className="flex items-center gap-6">

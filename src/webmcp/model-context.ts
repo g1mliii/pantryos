@@ -60,7 +60,14 @@ function normalize(context: CompatibleModelContext): CompatibleModelContext {
   if (!executeTool) return context;
 
   return {
-    ...context,
+    registerTool: (tool, options) =>
+      context.registerTool.call(context, tool, options),
+    ...(context.getTools
+      ? {
+          getTools: (options?: { fromOrigins?: string[] }) =>
+            context.getTools!.call(context, options),
+        }
+      : {}),
     executeTool: async (tool, inputArguments, options) => {
       try {
         return await executeTool.call(

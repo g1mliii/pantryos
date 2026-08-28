@@ -4,7 +4,7 @@
 
 PantryOS is a local-first kitchen inventory and recipe demo for the WebMCP Challenge. The human UI and WebMCP tools will operate the same browser-resident state through shared domain actions.
 
-> Current status: Phase 0 and the Phase 1 inventory/expiry slice are implemented. Recipe matching, groceries, and the ten product WebMCP tools remain to be built.
+> Current status: Phases 0 through 3 are implemented — inventory and expiry, recipe matching, groceries, and the ten WebMCP tools. Browser rehearsal and deployment remain.
 
 ## Why WebMCP fits
 
@@ -31,20 +31,20 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite. Product WebMCP tools will be added during Phase 3 of the [implementation plan](./PANTRYOS_IMPLEMENTATION_PLAN.md).
+Open the URL printed by Vite. The tool surface is described in the [implementation plan](./PANTRYOS_IMPLEMENTATION_PLAN.md).
 
-## WebMCP smoke check
+## WebMCP check
 
-Phase 0 registers exactly one read-only tool, `pantryos_foundation_smoke`. It accepts no arguments and does not read or change kitchen data. Registration uses `document.modelContext`; the legacy `navigator.modelContext` path exists only inside one compatibility adapter. Browsers without WebMCP continue to render and navigate normally.
+PantryOS registers ten tools over `document.modelContext`; the legacy `navigator.modelContext` path exists only inside one compatibility adapter. Browsers without WebMCP continue to render and navigate normally.
 
 For a compatible Chrome build:
 
 1. Open `chrome://flags/#enable-webmcp-testing`, enable WebMCP testing, and relaunch Chrome.
 2. Run `npm run dev -- --host 127.0.0.1`, then open the printed localhost URL.
-3. Open `/debug` and select **Inspect and run smoke tool**. The page calls `document.modelContext.getTools()` and `executeTool()`; one adapter contains the current Chrome JSON-string and in-app-browser object input difference.
+3. Open `/debug`, pick a tool, and run it. The page calls `document.modelContext.getTools()` and `executeTool()`, so a run there exercises the adapter that reconciles the current Chrome JSON-string and in-app-browser object input forms. The result line names the path that ran; browsers with no page API fall back to the registered callback.
 4. Repeat the check on the exact, locked HTTPS deployment hostname after Cloudflare credentials and that hostname are configured.
 
-The former `navigator.modelContextTesting` helper is not used; current Chromium exposes inspection and execution through the standard `document.modelContext` API.
+The former `navigator.modelContextTesting` helper is not used; current Chromium exposes inspection and execution through the standard `document.modelContext` API. `/debug` is development-only and redirects to `/` in production builds.
 
 ## Verification
 
