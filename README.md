@@ -4,13 +4,17 @@
 
 PantryOS is a local-first kitchen inventory and recipe demo for the WebMCP Challenge. The human UI and WebMCP tools will operate the same browser-resident state through shared domain actions.
 
-> Current status: Phases 0 through 3 are implemented — inventory and expiry, recipe matching, groceries, and the ten WebMCP tools. Browser rehearsal and deployment remain.
+**[Open the live app](https://pantryos.pressplay-subai.workers.dev)**
+
+> Current status: Phases 0 through 3 are implemented and deployed — inventory and expiry, recipe matching, groceries, and ten WebMCP tools backed by the same domain actions as the UI.
 
 ## Why WebMCP fits
 
 PantryOS has no account, backend, or cloud database for a server-side integration to query. WebMCP gives a browser-aware agent a structured interface to the local application state instead of relying on brittle UI actuation.
 
 Kitchen data is stored in `localStorage`. PantryOS itself does not upload it, but tool inputs and results may be processed by the browser agent or its AI provider when the user invokes a tool.
+
+Together, a person and their agent can inspect expiring food, find recipes that use it, add only missing ingredients to groceries, update quantities, and confirm destructive removal while both remain synchronized with the visible app.
 
 ## Stack
 
@@ -57,20 +61,26 @@ npm run deploy:dry
 
 ## Deployment
 
-The production workflow builds and deploys the `dist/` SPA through Cloudflare Workers Static Assets. Add these GitHub repository secrets before expecting automatic deployment:
+The production app is deployed through Cloudflare Workers Static Assets at:
 
-- `CLOUDFLARE_API_TOKEN` — a narrowly scoped Workers edit token.
-- `CLOUDFLARE_ACCOUNT_ID` — the target Cloudflare account.
+- <https://pantryos.pressplay-subai.workers.dev>
 
-Pushes to `main` run CI. The deployment workflow also runs on `main`, but its publish step safely skips while either Cloudflare secret is absent. It can also be started manually.
+Before publishing, run:
 
-Once a permanent hostname is chosen, record it in the repository/environment configuration and test that exact HTTPS origin. A temporary Wrangler preview URL does not satisfy the locked-hostname gate.
+```bash
+npm run verify
+npm run deploy:dry
+npm run deploy
+```
+
+Pushes to `main` run CI. The deployment workflow can also publish from GitHub when `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are configured as repository secrets.
 
 ## Project documents
 
 - [Implementation plan](./PANTRYOS_IMPLEMENTATION_PLAN.md)
 - [Plan audit](./PANTRYOS_PLAN_REVIEW.md)
 - [Repository instructions](./AGENTS.md)
+- [Submission copy and demo script](./SUBMISSION.md)
 
 ## License
 
