@@ -65,7 +65,7 @@ const inputNameSchema = z
   .min(1, "Give the item a name")
   .max(120, "Keep the name to 120 characters or fewer");
 
-const inputQuantitySchema = z
+export const inputQuantitySchema = z
   .number()
   .finite()
   .positive("Use a quantity greater than zero")

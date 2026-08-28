@@ -1,4 +1,5 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { AgentActivityPanel } from "./components/agent/AgentActivityPanel";
 import { ConfirmationDialog, MAIN_REGION_ID } from "./components/ui";
 import { DashboardPage } from "./routes/DashboardPage";
 import { DebugPage } from "./routes/DebugPage";
@@ -7,7 +8,7 @@ import { KitchenPage } from "./routes/KitchenPage";
 import { RecipeDetailPage } from "./routes/RecipeDetailPage";
 import { RecipesPage } from "./routes/RecipesPage";
 import { useKitchenStore } from "./stores/kitchen-store";
-import { useFoundationSmokeStatus } from "./webmcp/use-foundation-smoke";
+import { usePantryToolsStatus } from "./webmcp/use-pantry-tools";
 
 const navigation = [
   ["/", "Dashboard"],
@@ -20,7 +21,7 @@ export default function App() {
   const kitchenReady = useKitchenStore(
     (state) => state.hasHydrated && state.hasInitialized,
   );
-  const webMcpStatus = useFoundationSmokeStatus(kitchenReady);
+  const webMcpStatus = usePantryToolsStatus(kitchenReady);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -56,35 +57,35 @@ export default function App() {
       {/* id and tabIndex give ConfirmationDialog somewhere to return focus
           when the element that opened it has since been removed. */}
       <main
-        className="mx-auto max-w-[1240px] px-10 py-13 outline-none"
+        className="mx-auto grid max-w-[1240px] gap-14 px-10 py-13 outline-none lg:grid-cols-[minmax(0,1fr)_274px]"
         id={MAIN_REGION_ID}
         tabIndex={-1}
       >
-        {kitchenReady ? (
-          <Routes>
-            <Route
-              element={<DashboardPage webMcpStatus={webMcpStatus} />}
-              path="/"
-            />
-            <Route element={<KitchenPage />} path="/kitchen" />
-            <Route element={<RecipesPage />} path="/recipes" />
-            <Route element={<RecipeDetailPage />} path="/recipes/:recipeId" />
-            <Route element={<GroceriesPage />} path="/groceries" />
-            <Route
-              element={
-                import.meta.env.DEV ? (
-                  <DebugPage webMcpStatus={webMcpStatus} />
-                ) : (
-                  <Navigate replace to="/" />
-                )
-              }
-              path="/debug"
-            />
-            <Route element={<Navigate replace to="/" />} path="*" />
-          </Routes>
-        ) : (
-          <p className="font-serif text-2xl">Preparing your kitchen…</p>
-        )}
+        <div className="min-w-0">
+          {kitchenReady ? (
+            <Routes>
+              <Route element={<DashboardPage />} path="/" />
+              <Route element={<KitchenPage />} path="/kitchen" />
+              <Route element={<RecipesPage />} path="/recipes" />
+              <Route element={<RecipeDetailPage />} path="/recipes/:recipeId" />
+              <Route element={<GroceriesPage />} path="/groceries" />
+              <Route
+                element={
+                  import.meta.env.DEV ? (
+                    <DebugPage webMcpStatus={webMcpStatus} />
+                  ) : (
+                    <Navigate replace to="/" />
+                  )
+                }
+                path="/debug"
+              />
+              <Route element={<Navigate replace to="/" />} path="*" />
+            </Routes>
+          ) : (
+            <p className="font-serif text-2xl">Preparing your kitchen…</p>
+          )}
+        </div>
+        <AgentActivityPanel status={webMcpStatus} />
       </main>
     </div>
   );

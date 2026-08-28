@@ -6,6 +6,7 @@ import {
   type StorageValue,
 } from "zustand/middleware";
 import { z } from "zod";
+import { clearAgentActivity } from "./agent-activity-store";
 import { createDemoInventory } from "../data/demo-kitchen";
 import { getRecipeById } from "../data/recipes";
 import {
@@ -194,12 +195,14 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
             });
           },
           setHasHydrated: (value) => set({ hasHydrated: value }),
-          resetDemo: () =>
+          resetDemo: () => {
+            clearAgentActivity();
             set({
               hasInitialized: true,
               inventory: createDemoInventory(now()),
               groceries: [],
-            }),
+            });
+          },
           addGrocery: (input) => {
             const result = addGroceryItem(get().groceries, input, now());
             set({ groceries: result.items });
