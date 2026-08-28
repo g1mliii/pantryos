@@ -28,9 +28,9 @@ describe("PantryOS app shell", () => {
 
   it.each([
     ["/kitchen", /the kitchen/i],
-    ["/recipes", /cook what matters first/i],
-    ["/recipes/chicken-saag", /chicken-saag/i],
-    ["/groceries", /only buy what is missing/i],
+    ["/recipes", /what you could make/i],
+    ["/recipes/chicken-saag", /chicken saag/i],
+    ["/groceries", /the list/i],
     ["/debug", /inspect the tool surface/i],
   ])("loads the %s route", (path, heading) => {
     render(

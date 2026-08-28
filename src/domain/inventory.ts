@@ -10,13 +10,11 @@ import {
   type Location,
 } from "../schemas/inventory";
 import { sortByUseFirst } from "./expiry";
+import {
+  normalizeIngredientName,
+  simplifyIngredientName,
+} from "./normalize-ingredient";
 import { areUnitsCompatible, toCanonicalAmount } from "./units";
-
-// A Map, not an object literal: a plain object would resolve names like
-// "constructor" or "toString" to inherited prototype members.
-const INVENTORY_ALIASES = new Map<string, string>([
-  ["chicken", "chicken breast"],
-]);
 
 /** One spelling of each location, shared by every surface that names one. */
 export const LOCATION_LABELS: Record<Location, string> = {
@@ -54,19 +52,12 @@ export function describeInventoryError(caught: unknown): string {
 }
 
 export function normalizeInventoryName(name: string) {
-  const normalized = name
-    .toLocaleLowerCase("en-CA")
-    .trim()
-    .replace(/[’']/g, "")
-    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return INVENTORY_ALIASES.get(normalized) ?? normalized;
+  return normalizeIngredientName(name);
 }
 
 function readableIdBase(name: string) {
   return (
-    normalizeInventoryName(name)
+    simplifyIngredientName(name)
       .normalize("NFKD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")

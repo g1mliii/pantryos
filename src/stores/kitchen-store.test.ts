@@ -77,6 +77,7 @@ describe("kitchen persistence and initialization", () => {
     firstLoad
       .getState()
       .consumeInventory("chicken-breast", { quantity: 400, unit: "g" });
+    firstLoad.getState().addRecipeToGroceries("chicken-saag");
 
     const reloaded = makeStore();
     expect(
@@ -86,6 +87,9 @@ describe("kitchen persistence and initialization", () => {
       reloaded.getState().inventory.find((item) => item.id === "chicken-breast")
         ?.quantity,
     ).toBe(200);
+    expect(
+      reloaded.getState().groceries.map((item) => item.normalizedName),
+    ).toEqual(["ginger", "fresh tomato"]);
 
     for (const item of reloaded.getState().inventory) {
       reloaded.getState().removeInventory(item.id);
@@ -103,6 +107,7 @@ describe("kitchen persistence and initialization", () => {
     expect(
       resetInventory.find((item) => item.id === "chicken-breast")?.quantity,
     ).toBe(600);
+    expect(emptyReload.getState().groceries).toEqual([]);
   });
 });
 

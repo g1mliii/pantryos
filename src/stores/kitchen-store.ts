@@ -7,12 +7,28 @@ import {
 } from "zustand/middleware";
 import { z } from "zod";
 import { createDemoInventory } from "../data/demo-kitchen";
+import { getRecipeById } from "../data/recipes";
+import {
+  addGroceryItem,
+  addMissingRecipeIngredients,
+  clearCheckedGroceries,
+  removeGroceryItem,
+  setGroceryChecked,
+  type GroceryAddResult,
+} from "../domain/groceries";
 import {
   addInventoryItem,
   consumeInventoryItem,
   editInventoryItem,
+  normalizeInventoryName,
   removeInventoryItem,
 } from "../domain/inventory";
+import { matchRecipe } from "../domain/recipe-matching";
+import {
+  groceryItemSchema,
+  type GroceryDraft,
+  type GroceryItem,
+} from "../schemas/grocery";
 import {
   inventoryItemSchema,
   type InventoryConsumption,
@@ -22,7 +38,7 @@ import {
 } from "../schemas/inventory";
 
 export const KITCHEN_STORAGE_KEY = "pantryos-kitchen";
-export const KITCHEN_SCHEMA_VERSION = 1;
+export const KITCHEN_SCHEMA_VERSION = 2;
 
 // Items are validated one at a time in cleanPersistedState rather than as a
 // typed array here. All-or-nothing validation would let a single unreadable row
@@ -30,17 +46,22 @@ export const KITCHEN_SCHEMA_VERSION = 1;
 const persistedKitchenSchema = z.object({
   hasInitialized: z.boolean(),
   inventory: z.array(z.unknown()),
+  groceries: z.array(z.unknown()).optional(),
 });
 
 // Versioning is persist's `version` option, not a field carried in state.
 export interface PersistedKitchenState {
   hasInitialized: boolean;
   inventory: InventoryItem[];
+  groceries: GroceryItem[];
 }
 
 export interface KitchenStoreState extends PersistedKitchenState {
   hasHydrated: boolean;
+  addGrocery: (input: GroceryDraft) => GroceryAddResult;
   addInventory: (input: InventoryDraft) => InventoryItem;
+  addRecipeToGroceries: (recipeId: string) => GroceryAddResult;
+  clearCheckedGroceries: () => void;
   consumeInventory: (
     itemId: string,
     input?: InventoryConsumption,
@@ -48,7 +69,9 @@ export interface KitchenStoreState extends PersistedKitchenState {
   editInventory: (itemId: string, input: InventoryEdit) => InventoryItem;
   initialize: () => void;
   removeInventory: (itemId: string) => InventoryItem;
+  removeGrocery: (itemId: string) => void;
   resetDemo: () => void;
+  setGroceryChecked: (itemId: string, checked: boolean) => void;
   setHasHydrated: (value: boolean) => void;
 }
 
@@ -63,9 +86,19 @@ function cleanPersistedState(value: unknown): PersistedKitchenState | null {
   const inventory: InventoryItem[] = [];
   for (const candidate of parsed.data.inventory) {
     const item = inventoryItemSchema.safeParse(candidate);
-    if (item.success) inventory.push(item.data);
+    if (item.success) {
+      inventory.push({
+        ...item.data,
+        normalizedName: normalizeInventoryName(item.data.name),
+      });
+    }
   }
-  return { hasInitialized: parsed.data.hasInitialized, inventory };
+  const groceries: GroceryItem[] = [];
+  for (const candidate of parsed.data.groceries ?? []) {
+    const item = groceryItemSchema.safeParse(candidate);
+    if (item.success) groceries.push(item.data);
+  }
+  return { hasInitialized: parsed.data.hasInitialized, inventory, groceries };
 }
 
 /**
@@ -150,12 +183,14 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
         return {
           hasInitialized: false,
           inventory: [],
+          groceries: [],
           hasHydrated: false,
           initialize: () => {
             if (get().hasInitialized) return;
             set({
               hasInitialized: true,
               inventory: createDemoInventory(now()),
+              groceries: [],
             });
           },
           setHasHydrated: (value) => set({ hasHydrated: value }),
@@ -163,7 +198,33 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
             set({
               hasInitialized: true,
               inventory: createDemoInventory(now()),
+              groceries: [],
             }),
+          addGrocery: (input) => {
+            const result = addGroceryItem(get().groceries, input, now());
+            set({ groceries: result.items });
+            return result;
+          },
+          addRecipeToGroceries: (recipeId) => {
+            const recipe = getRecipeById(recipeId);
+            if (!recipe) throw new Error(`No recipe has id "${recipeId}".`);
+            const match = matchRecipe(recipe, get().inventory, now());
+            const result = addMissingRecipeIngredients(
+              get().groceries,
+              match,
+              now(),
+            );
+            set({ groceries: result.items });
+            return result;
+          },
+          setGroceryChecked: (itemId, checked) =>
+            set({
+              groceries: setGroceryChecked(get().groceries, itemId, checked),
+            }),
+          removeGrocery: (itemId) =>
+            set({ groceries: removeGroceryItem(get().groceries, itemId) }),
+          clearCheckedGroceries: () =>
+            set({ groceries: clearCheckedGroceries(get().groceries) }),
           addInventory: (input) => {
             const result = addInventoryItem(get().inventory, input, now());
             set({ inventory: result.items });
@@ -203,6 +264,7 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
         partialize: (state) => ({
           hasInitialized: state.hasInitialized,
           inventory: state.inventory,
+          groceries: state.groceries,
         }),
         // A migrated payload flows straight into merge, which is where the one
         // sanitising pass happens — for older versions and current ones alike.

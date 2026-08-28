@@ -45,13 +45,21 @@ export function areUnitsCompatible(
 
 export function formatQuantity(item: InventoryItem) {
   const quantity = fromCanonicalAmount(item.quantity, item.displayUnit);
+  return formatDisplayQuantity(quantity, item.displayUnit);
+}
+
+export function formatDisplayQuantity(
+  quantity: number | undefined,
+  displayUnit: DisplayUnit | undefined,
+) {
+  if (quantity === undefined) return "";
   const formatted = new Intl.NumberFormat("en-CA", {
     maximumFractionDigits: 3,
   }).format(quantity);
-  if (item.displayUnit === "count") return formatted;
-  if (item.displayUnit === "l") return `${formatted} L`;
-  if (item.displayUnit === "package" || item.displayUnit === "serving") {
-    return `${formatted} ${item.displayUnit}${quantity === 1 ? "" : "s"}`;
+  if (displayUnit === undefined || displayUnit === "count") return formatted;
+  if (displayUnit === "l") return `${formatted} L`;
+  if (displayUnit === "package" || displayUnit === "serving") {
+    return `${formatted} ${displayUnit}${quantity === 1 ? "" : "s"}`;
   }
-  return `${formatted} ${item.displayUnit}`;
+  return `${formatted} ${displayUnit}`;
 }
