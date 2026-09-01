@@ -43,6 +43,21 @@ export function areUnitsCompatible(
   return UNIT_DEFINITIONS[displayUnit].canonicalUnit === canonicalUnit;
 }
 
+/**
+ * Past a thousand, g and ml read better as kg and L. Callers keep their own
+ * rounding — grocery rows and recipe amounts round to different precision —
+ * but the threshold and the unit names belong to one place.
+ */
+export function compactMetricAmount(quantity: number, unit: DisplayUnit) {
+  if (unit === "g" && quantity >= 1_000) {
+    return { quantity: quantity / 1_000, unit: "kg" as const };
+  }
+  if (unit === "ml" && quantity >= 1_000) {
+    return { quantity: quantity / 1_000, unit: "l" as const };
+  }
+  return { quantity, unit };
+}
+
 export function formatQuantity(item: InventoryItem) {
   const quantity = fromCanonicalAmount(item.quantity, item.displayUnit);
   return formatDisplayQuantity(quantity, item.displayUnit);

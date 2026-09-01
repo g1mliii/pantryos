@@ -10,11 +10,11 @@
   --font-serif: Newsreader, Georgia, "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Warm paper surfaces, lightest to deepest */
-  --color-paper: #f6f1e8;
-  --color-paper-raised: #fdfaf4;
-  --color-paper-sunk: #eadfd2;
-  --color-paper-deep: #e5dccd;
+  /* Clean paper surfaces, lightest to deepest */
+  --color-paper: #fbfaf7;
+  --color-paper-raised: #ffffff;
+  --color-paper-sunk: #f1ede7;
+  --color-paper-deep: #ebe6df;
 
   /* Ink, darkest to faintest */
   --color-ink: #2b2420;
@@ -24,16 +24,16 @@
   --color-ink-ghost: #b5a597;
 
   /* Hairlines. `rule` separates sections, `rule-soft` separates rows. */
-  --color-rule: #ddd3c4;
-  --color-rule-soft: #e7dfd2;
-  --color-rule-faint: #ece5d9;
-  --color-rule-warm: #dccbb8;
+  --color-rule: #dedad4;
+  --color-rule-soft: #e8e4de;
+  --color-rule-faint: #eeebe6;
+  --color-rule-warm: #d8d2ca;
 
   /* Copper — the only accent. Never introduce a second one. */
   --color-copper: #a6603a;
   --color-copper-deep: #8a4d2c;
   --color-copper-mid: #c9a385;
-  --color-copper-pale: #f0e4d8;
+  --color-copper-pale: #f5ebe4;
 
   /* Freshness. Filled while urgent, outlined once it is not. */
   --color-urgent-deep: #7d2f1e;

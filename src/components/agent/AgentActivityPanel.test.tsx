@@ -10,7 +10,7 @@ import { AgentActivityPanel } from "./AgentActivityPanel";
 afterEach(clearAgentActivity);
 
 describe("AgentActivityPanel", () => {
-  it("shows a ready ten-tool status and the latest completed call", () => {
+  it("shows a ready eleven-tool status and the latest completed call", () => {
     const id = beginAgentActivity("get_expiring_items", {});
     finishAgentActivity(id, "success", "Found three things.");
 
@@ -18,16 +18,16 @@ describe("AgentActivityPanel", () => {
       <AgentActivityPanel
         status={{
           state: "ready",
-          registeredCount: 10,
+          registeredCount: 11,
           source: "document",
-          total: 10,
+          total: 11,
         }}
       />,
     );
 
-    expect(screen.getByText("Agent connected")).toBeTruthy();
-    expect(screen.getByText(/10 tools registered/i)).toBeTruthy();
-    expect(screen.getByText(/get_expiring_items/)).toBeTruthy();
+    expect(screen.getByText("AI assistant ready")).toBeTruthy();
+    expect(screen.getByText(/suggest a meal/i)).toBeTruthy();
+    expect(screen.getByText("Checked what to use soon")).toBeTruthy();
     expect(screen.getByText("Found three things.")).toBeTruthy();
   });
 
@@ -37,12 +37,13 @@ describe("AgentActivityPanel", () => {
         status={{
           state: "unavailable",
           registeredCount: 0,
-          total: 10,
+          total: 11,
         }}
       />,
     );
 
-    expect(screen.getByText("No agent here")).toBeTruthy();
-    expect(screen.getByText(/everything still works by hand/i)).toBeTruthy();
+    expect(screen.getByText("Connect an AI assistant")).toBeTruthy();
+    expect(screen.getByText(/PantryOS works on its own/i)).toBeTruthy();
+    expect(screen.getByText("How to connect — 5 steps")).toBeTruthy();
   });
 });

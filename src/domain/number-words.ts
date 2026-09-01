@@ -51,3 +51,13 @@ export function pluralize(
 ): string {
   return count === 1 ? singular : plural;
 }
+
+/**
+ * Joins names the way the copy reads them: "a", "a and b", "a, b and c".
+ * Recipes, groceries and the tool summaries all list added items, so the
+ * serial comma rule lives here rather than as `.join(" and ")` per surface.
+ */
+export function joinNames(names: readonly string[]): string {
+  if (names.length < 2) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}

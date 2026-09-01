@@ -1,11 +1,15 @@
 import { normalizeIngredientName } from "../domain/normalize-ingredient";
-import type { DisplayUnit } from "../schemas/inventory";
-import { recipeSchema, type RecipeIngredient } from "../schemas/recipe";
+import {
+  recipeSchema,
+  type RecipeIngredient,
+  type RecipeUnit,
+} from "../schemas/recipe";
+import type { Recipe } from "../schemas/recipe";
 
 function ingredient(
   name: string,
   quantity?: number,
-  displayUnit?: DisplayUnit,
+  displayUnit?: RecipeUnit,
   optional = false,
 ): RecipeIngredient {
   return {
@@ -25,6 +29,8 @@ export const RECIPES = recipeSchema.array().parse([
     description:
       "Spinach braised down with yogurt-marinated chicken and warm spices. Built to clear the shelf you have already been worrying about.",
     servings: 4,
+    prepMinutes: 10,
+    cookMinutes: 17,
     totalMinutes: 27,
     ingredients: [
       ingredient("spinach", 200, "g"),
@@ -42,9 +48,18 @@ export const RECIPES = recipeSchema.array().parse([
       ingredient("lemon", 1, "count", true),
     ],
     steps: [
-      "Toss the chicken with half the yogurt, the turmeric and a good pinch of salt. Leave it while you get everything else ready.",
+      {
+        section: "Marinate",
+        instruction:
+          "Toss the chicken with half the yogurt, the turmeric and a good pinch of salt. Leave it while you get everything else ready.",
+        note: "Even ten minutes helps the seasoning settle in.",
+      },
       "Wilt the spinach in a dry pan for two minutes, then chop it fine and set it aside.",
-      "Soften the onion in oil, then add the garlic, ginger, cumin and garam masala and cook until the kitchen smells like it should.",
+      {
+        section: "Cook",
+        instruction:
+          "Soften the onion in oil, then add the garlic, ginger, cumin and garam masala and cook until the kitchen smells like it should.",
+      },
       "Add the tomato and let it cook down until it darkens, about four minutes.",
       "Add the chicken and brown it properly, then stir the spinach back in with a splash of water.",
       "Off the heat, fold through the last of the yogurt so it does not split. Season, and eat.",
@@ -369,6 +384,13 @@ export const RECIPES = recipeSchema.array().parse([
   },
 ]);
 
-export function getRecipeById(recipeId: string) {
-  return RECIPES.find((recipe) => recipe.id === recipeId);
+export function getAllRecipes(customRecipes: readonly Recipe[] = []) {
+  return [...RECIPES, ...customRecipes];
+}
+
+export function getRecipeById(
+  recipeId: string,
+  recipes: readonly Recipe[] = RECIPES,
+) {
+  return recipes.find((recipe) => recipe.id === recipeId);
 }

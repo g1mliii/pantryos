@@ -28,6 +28,26 @@ function makeHarness(
   return { confirm, execute, store, tools };
 }
 
+function expectEveryPropertyDescribed(schema: unknown) {
+  if (Array.isArray(schema)) {
+    schema.forEach(expectEveryPropertyDescribed);
+    return;
+  }
+  if (!schema || typeof schema !== "object") return;
+  const node = schema as Record<string, unknown>;
+  if (node.properties && typeof node.properties === "object") {
+    for (const property of Object.values(
+      node.properties as Record<string, unknown>,
+    )) {
+      expect(property).toMatchObject({ description: expect.any(String) });
+      expectEveryPropertyDescribed(property);
+    }
+  }
+  for (const keyword of ["anyOf", "oneOf", "allOf", "$defs", "items"]) {
+    expectEveryPropertyDescribed(node[keyword]);
+  }
+}
+
 beforeEach(() => localStorage.clear());
 afterEach(() => {
   localStorage.clear();
@@ -35,7 +55,7 @@ afterEach(() => {
 });
 
 describe("PantryOS WebMCP tool contracts", () => {
-  it("publishes exactly ten annotated, closed object schemas", () => {
+  it("publishes exactly eleven annotated, closed object schemas", () => {
     const { tools } = makeHarness();
 
     expect(tools.map((tool) => tool.name)).toEqual([
@@ -46,6 +66,7 @@ describe("PantryOS WebMCP tool contracts", () => {
       "remove_inventory_item",
       "find_recipes",
       "get_recipe",
+      "add_recipe",
       "add_grocery_item",
       "add_recipe_to_grocery_list",
       "get_grocery_list",
@@ -80,6 +101,9 @@ describe("PantryOS WebMCP tool contracts", () => {
         },
       },
     });
+    expectEveryPropertyDescribed(
+      tools.find((tool) => tool.name === "add_recipe")?.inputSchema,
+    );
   });
 
   it("rejects unknown or incomplete input before mutation", async () => {
@@ -321,6 +345,119 @@ describe("PantryOS WebMCP tool contracts", () => {
       ok: true,
       data: { items: [] },
     });
+  });
+
+  it("caps large tool payloads and reports every truncated result", async () => {
+    const { execute, store } = makeHarness();
+
+    for (let index = 0; index < 55; index += 1) {
+      store.getState().addInventory({
+        name: `Today bulk ${index}`,
+        quantity: 1,
+        unit: "count",
+        location: "pantry",
+        expiryDate: "2026-08-28",
+      });
+      store.getState().addInventory({
+        name: `Expired bulk ${index}`,
+        quantity: 1,
+        unit: "count",
+        location: "fridge",
+        expiryDate: "2026-08-27",
+      });
+    }
+    for (let index = 0; index < 105; index += 1) {
+      store.getState().addGrocery({ name: `Grocery bulk ${index}` });
+    }
+
+    await expect(
+      execute("get_inventory", { location: "pantry" }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { returned: 50, totalStored: 62, truncated: true },
+    });
+    const allInventory = (await execute("get_inventory", {
+      includeExpired: true,
+    })) as { data: { expired: unknown[] } };
+    expect(allInventory).toMatchObject({
+      ok: true,
+      data: {
+        totalStored: 123,
+        truncated: true,
+      },
+    });
+    expect(allInventory.data.expired).toHaveLength(50);
+
+    const expiring = (await execute("get_expiring_items", {
+      withinDays: 0,
+    })) as { data: { items: unknown[] } };
+    expect(expiring).toMatchObject({
+      ok: true,
+      data: {
+        totalMatches: 55,
+        truncated: true,
+      },
+    });
+    expect(expiring.data.items).toHaveLength(50);
+
+    const groceries = (await execute("get_grocery_list")) as {
+      data: { items: unknown[] };
+    };
+    expect(groceries).toMatchObject({
+      ok: true,
+      data: { truncated: true },
+    });
+    expect(groceries.data.items).toHaveLength(100);
+  });
+
+  it("fails closed when inventory changes while confirmation is open", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const tools = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+      requestConfirmation: async () => {
+        store.getState().removeInventory("spinach");
+        return "confirmed";
+      },
+    });
+    const remove = tools.find(
+      (candidate) => candidate.name === "remove_inventory_item",
+    )!;
+
+    await expect(
+      remove.execute(
+        { itemId: "spinach" },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: "item_not_found" });
+  });
+
+  it("fails closed when the confirmed inventory row changes in place", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const tools = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+      requestConfirmation: async () => {
+        store
+          .getState()
+          .consumeInventory("spinach", { quantity: 100, unit: "g" });
+        return "confirmed";
+      },
+    });
+    const remove = tools.find(
+      (candidate) => candidate.name === "remove_inventory_item",
+    )!;
+
+    await expect(
+      remove.execute(
+        { itemId: "spinach" },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: "inventory_changed" });
+    expect(
+      store.getState().inventory.find((item) => item.id === "spinach")
+        ?.quantity,
+    ).toBe(100);
   });
 
   it("clears visible agent activity when Reset Demo restores the kitchen", async () => {

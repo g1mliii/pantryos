@@ -20,6 +20,12 @@ describe("RecipeDetailPage", () => {
     expect(screen.getByText(/uses 3 things going off/i)).toBeTruthy();
     expect(screen.getAllByText("ginger")).toHaveLength(1);
     expect(screen.getAllByText("fresh tomato")).toHaveLength(1);
+    expect(screen.getByText(/10 min prep · 17 min cook/i)).toBeTruthy();
+    expect(screen.getByText(/Cook’s note: Even ten minutes/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Increase servings" }));
+    expect(screen.getByText("5 servings")).toBeTruthy();
+    expect(screen.getByText("500 g")).toBeTruthy();
 
     const addMissing = screen.getByRole("button", {
       name: "Put both on the list",
@@ -28,6 +34,10 @@ describe("RecipeDetailPage", () => {
     expect(
       kitchenStore.getState().groceries.map((item) => item.normalizedName),
     ).toEqual(["ginger", "fresh tomato"]);
+    expect(kitchenStore.getState().groceries).toMatchObject([
+      { name: "ginger", quantity: 25, displayUnit: "g" },
+      { name: "fresh tomato", quantity: 2.5, displayUnit: "count" },
+    ]);
     expect(screen.getByText(/Added ginger and fresh tomato/i)).toBeTruthy();
 
     fireEvent.click(addMissing);

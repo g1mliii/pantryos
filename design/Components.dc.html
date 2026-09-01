@@ -19,13 +19,13 @@
       transform-origin: top left;
     }
     .dd-caret { transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1); }
-    .dd-opt:hover { background: #f0e4d8; }
+    .dd-opt:hover { background: #f5ebe4; }
     @media (prefers-reduced-motion: reduce) {
       .dd-menu, .dd-caret { transition-duration: 1ms; }
     }
   </style>
 </helmet>
-<div style="width: 1440px; background: #f6f1e8; color: #2b2420; font-family: Karla, 'Helvetica Neue', Arial, sans-serif;">
+<div style="width: 1440px; background: #fbfaf7; color: #2b2420; font-family: Karla, 'Helvetica Neue', Arial, sans-serif;">
 
   <div style="height: 5px; background: #a6603a;"></div>
 
@@ -42,12 +42,12 @@
       <span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>
       <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56;">Motion, once and for all</p>
     </div>
-    <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #ddd3c4;"></span></div>
+    <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #dedad4;"></span></div>
 
     <div style="display: flex; gap: 52px; padding-top: 24px;">
       <div style="width: 590px;">
         <p style="margin: 0 0 16px; font-size: 15px; line-height: 27px; color: #4a403a;">One rule keeps every menu, dialog and toast fast: <strong style="font-weight: 600;">animate only <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px;">opacity</span> and <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px;">transform</span>.</strong> Both are composited on the GPU and never trigger layout. Animating height, top, width or box-shadow forces a reflow on every frame and is what makes menus feel cheap.</p>
-        <div style="background: #eadfd2; padding: 20px 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; line-height: 26px; color: #4a403a;">
+        <div style="background: #f1ede7; padding: 20px 24px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; line-height: 26px; color: #4a403a;">
           --ease-out:  cubic-bezier(0.16, 1, 0.3, 1)<br>
           --ease-in:   cubic-bezier(0.4, 0, 1, 1)<br>
           --enter:     140ms var(--ease-out)<br>
@@ -71,18 +71,18 @@
       <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56; flex-grow: 1;">Select — the one you will use most</p>
       <span style="font-size: 13px; color: #8a4d2c;">click it, it really works</span>
     </div>
-    <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #ddd3c4;"></span></div>
+    <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #dedad4;"></span></div>
 
     <div style="display: flex; gap: 52px; padding-top: 26px;">
 
       <div style="width: 260px;">
         <p style="margin: 0 0 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Live</p>
         <div style="position: relative; height: 190px;">
-          <div onClick="{{ toggle }}" style="display: flex; align-items: center; gap: 12px; background: #fdfaf4; border: 1px solid #c9a385; border-bottom: 2px solid #a6603a; padding: 11px 14px; cursor: pointer;">
+          <div onClick="{{ toggle }}" style="display: flex; align-items: center; gap: 12px; background: #ffffff; border: 1px solid #c9a385; border-bottom: 2px solid #a6603a; padding: 11px 14px; cursor: pointer;">
             <span style="flex-grow: 1; font-size: 15px;">{{ picked }}</span>
             <svg class="dd-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a6603a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform: {{ caret }};"><path d="m6 9 6 6 6-6"></path></svg>
           </div>
-          <div class="dd-menu" style="position: absolute; top: 48px; left: 0; right: 0; background: #fdfaf4; border: 1px solid #dccbb8; box-shadow: 0 12px 28px rgba(70, 52, 38, 0.14); padding: 4px; opacity: {{ menu.o }}; transform: translateY({{ menu.y }}) scale({{ menu.s }}); visibility: {{ menu.v }}; pointer-events: {{ menu.pe }};">
+          <div class="dd-menu" style="position: absolute; top: 48px; left: 0; right: 0; background: #ffffff; border: 1px solid #d8d2ca; box-shadow: 0 12px 28px rgba(70, 52, 38, 0.14); padding: 4px; opacity: {{ menu.o }}; transform: translateY({{ menu.y }}) scale({{ menu.s }}); visibility: {{ menu.v }}; pointer-events: {{ menu.pe }};">
             <sc-for list="{{ options }}" as="opt" hint-placeholder-count="3">
               <div class="dd-opt" onClick="{{ opt.pick }}" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer;">
                 <span style="width: 5px; height: 5px; background: {{ opt.mark }}; display: inline-block;"></span>
@@ -95,7 +95,7 @@
 
       <div style="width: 260px;">
         <p style="margin: 0 0 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Resting</p>
-        <div style="display: flex; align-items: center; gap: 12px; background: #fdfaf4; border: 1px solid #dccbb8; padding: 11px 14px;">
+        <div style="display: flex; align-items: center; gap: 12px; background: #ffffff; border: 1px solid #d8d2ca; padding: 11px 14px;">
           <span style="flex-grow: 1; font-size: 15px; color: #6b5f56;">Choose a unit</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a8d82" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
         </div>
@@ -104,7 +104,7 @@
 
       <div style="width: 260px;">
         <p style="margin: 0 0 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Focused by keyboard</p>
-        <div style="display: flex; align-items: center; gap: 12px; background: #fdfaf4; border: 1px solid #a6603a; outline: 2px solid #eadfd2; padding: 11px 14px;">
+        <div style="display: flex; align-items: center; gap: 12px; background: #ffffff; border: 1px solid #a6603a; outline: 2px solid #f1ede7; padding: 11px 14px;">
           <span style="flex-grow: 1; font-size: 15px;">Grams</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a6603a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
         </div>
@@ -131,19 +131,19 @@
       <span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>
       <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56;">Everything else, in the order you will need it</p>
     </div>
-    <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #ddd3c4;"></span></div>
+    <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #dedad4;"></span></div>
 
     <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 52px; padding-top: 30px;">
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Quantity + unit</p>
         <div style="display: flex;">
-          <div style="display: flex; align-items: center; background: #fdfaf4; border: 1px solid #dccbb8; border-right: none;">
-            <span style="padding: 10px 14px; font-size: 17px; color: #a6603a; border-right: 1px solid #ece5d9;">−</span>
+          <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #d8d2ca; border-right: none;">
+            <span style="padding: 10px 14px; font-size: 17px; color: #a6603a; border-right: 1px solid #eeebe6;">−</span>
             <span style="padding: 10px 18px; font-size: 15px; font-weight: 500; min-width: 44px; text-align: center;">600</span>
-            <span style="padding: 10px 14px; font-size: 17px; color: #a6603a; border-left: 1px solid #ece5d9;">+</span>
+            <span style="padding: 10px 14px; font-size: 17px; color: #a6603a; border-left: 1px solid #eeebe6;">+</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px; background: #eadfd2; border: 1px solid #dccbb8; padding: 10px 13px;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #f1ede7; border: 1px solid #d8d2ca; padding: 10px 13px;">
             <span style="font-size: 15px;">g</span>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a6603a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
           </div>
@@ -153,11 +153,11 @@
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Text field</p>
-        <div style="background: #fdfaf4; border: 1px solid #dccbb8; padding: 11px 14px;">
+        <div style="background: #ffffff; border: 1px solid #d8d2ca; padding: 11px 14px;">
           <span style="font-size: 15px;">Chicken breast</span>
         </div>
         <div style="height: 10px;"></div>
-        <div style="background: #fdfaf4; border: 1px solid #a83e28; padding: 11px 14px;">
+        <div style="background: #ffffff; border: 1px solid #a83e28; padding: 11px 14px;">
           <span style="font-size: 15px; color: #b5a597;">Name</span>
         </div>
         <p style="margin: 8px 0 0; font-size: 13px; color: #a83e28;">Give it a name so the agent can find it</p>
@@ -165,7 +165,7 @@
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Date</p>
-        <div style="display: flex; align-items: center; gap: 12px; background: #fdfaf4; border: 1px solid #dccbb8; padding: 11px 14px;">
+        <div style="display: flex; align-items: center; gap: 12px; background: #ffffff; border: 1px solid #d8d2ca; padding: 11px 14px;">
           <span style="flex-grow: 1; font-size: 15px;">29 August 2026</span>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a6603a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
         </div>
@@ -175,9 +175,9 @@
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Buttons</p>
         <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-          <span style="background: #a6603a; color: #f6f1e8; padding: 11px 20px; font-size: 14px; font-weight: 600;">Add it</span>
-          <span style="background: #fdfaf4; border: 1px solid #a6603a; color: #8a4d2c; padding: 10px 19px; font-size: 14px; font-weight: 600;">Cancel</span>
-          <span style="background: #a83e28; color: #f6f1e8; padding: 11px 20px; font-size: 14px; font-weight: 600;">Throw out</span>
+          <span style="background: #a6603a; color: #fbfaf7; padding: 11px 20px; font-size: 14px; font-weight: 600;">Add it</span>
+          <span style="background: #ffffff; border: 1px solid #a6603a; color: #8a4d2c; padding: 10px 19px; font-size: 14px; font-weight: 600;">Cancel</span>
+          <span style="background: #a83e28; color: #fbfaf7; padding: 11px 20px; font-size: 14px; font-weight: 600;">Throw out</span>
           <span style="font-size: 14px; color: #6b5f56; border-bottom: 1px solid #c9bcab; padding-bottom: 3px;">Keep it</span>
         </div>
         <p style="margin: 12px 0 0; font-size: 13px; line-height: 21px; color: #9a8d82;">One filled button per view. The quiet link is the escape hatch.</p>
@@ -186,11 +186,11 @@
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Freshness marker</p>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          <span style="background: #7d2f1e; color: #f6f1e8; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 10px;">GONE OFF</span>
-          <span style="background: #a83e28; color: #f6f1e8; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 10px;">TODAY</span>
+          <span style="background: #7d2f1e; color: #fbfaf7; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 10px;">GONE OFF</span>
+          <span style="background: #a83e28; color: #fbfaf7; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 10px;">TODAY</span>
           <span style="background: #c78a2e; color: #2b2420; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 10px;">2 DAYS</span>
           <span style="background: #e0c08a; color: #2b2420; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 10px;">3 DAYS</span>
-          <span style="border: 1px solid #dccbb8; color: #9a8d82; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 3px 9px;">IN 9 DAYS</span>
+          <span style="border: 1px solid #d8d2ca; color: #9a8d82; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 3px 9px;">IN 9 DAYS</span>
         </div>
         <p style="margin: 12px 0 0; font-size: 13px; line-height: 21px; color: #9a8d82;">Filled while it is urgent, outlined once it is not. Colour is never the only signal — the words carry it.</p>
       </div>
@@ -204,7 +204,7 @@
           </span>
           <span style="display: flex; align-items: center; gap: 11px; font-family: Newsreader, Georgia, serif; font-size: 21px; color: #b5a597;">
             <span style="width: 16px; height: 16px; background: #a6603a; display: inline-flex; align-items: center; justify-content: center;">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f6f1e8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fbfaf7" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
             </span>
             <span style="text-decoration: line-through;">Coriander</span>
           </span>
@@ -214,11 +214,11 @@
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Filter row</p>
-        <div style="display: flex; gap: 0; border: 1px solid #dccbb8; width: fit-content;">
-          <span style="background: #a6603a; color: #f6f1e8; padding: 9px 16px; font-size: 13px; font-weight: 600;">Everything</span>
-          <span style="padding: 9px 16px; font-size: 13px; color: #6b5f56; border-left: 1px solid #dccbb8;">Fridge</span>
-          <span style="padding: 9px 16px; font-size: 13px; color: #6b5f56; border-left: 1px solid #dccbb8;">Freezer</span>
-          <span style="padding: 9px 16px; font-size: 13px; color: #6b5f56; border-left: 1px solid #dccbb8;">Pantry</span>
+        <div style="display: flex; gap: 0; border: 1px solid #d8d2ca; width: fit-content;">
+          <span style="background: #a6603a; color: #fbfaf7; padding: 9px 16px; font-size: 13px; font-weight: 600;">Everything</span>
+          <span style="padding: 9px 16px; font-size: 13px; color: #6b5f56; border-left: 1px solid #d8d2ca;">Fridge</span>
+          <span style="padding: 9px 16px; font-size: 13px; color: #6b5f56; border-left: 1px solid #d8d2ca;">Freezer</span>
+          <span style="padding: 9px 16px; font-size: 13px; color: #6b5f56; border-left: 1px solid #d8d2ca;">Pantry</span>
         </div>
         <p style="margin: 12px 0 0; font-size: 13px; line-height: 21px; color: #9a8d82;">Butted together, one copper fill for the active one. No gaps, no pills.</p>
       </div>
@@ -227,14 +227,14 @@
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Coverage bar</p>
         <div style="display: flex; align-items: baseline; gap: 14px;">
           <span style="font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 300; color: #a6603a;">5<span style="color: #c1a892;">/7</span></span>
-          <div style="flex-grow: 1; height: 4px; background: #e7dfd2;"><div style="width: 71%; height: 4px; background: #a6603a;"></div></div>
+          <div style="flex-grow: 1; height: 4px; background: #e8e4de;"><div style="width: 71%; height: 4px; background: #a6603a;"></div></div>
         </div>
         <p style="margin: 14px 0 0; font-size: 13px; line-height: 21px; color: #9a8d82;">Square, 4px, no radius, no gradient. The fraction is the real answer; the bar is the glance.</p>
       </div>
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Row actions</p>
-        <div style="display: flex; align-items: baseline; gap: 20px; border-bottom: 1px solid #e7dfd2; padding-bottom: 14px;">
+        <div style="display: flex; align-items: baseline; gap: 20px; border-bottom: 1px solid #e8e4de; padding-bottom: 14px;">
           <span style="font-family: Newsreader, Georgia, serif; font-size: 21px; flex-grow: 1;">Spinach</span>
           <span style="font-size: 13px; color: #8a4d2c; border-bottom: 1px solid #c9a385; padding-bottom: 2px;">use</span>
           <span style="font-size: 13px; color: #9a8d82;">edit</span>
@@ -245,7 +245,7 @@
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Confirmation note</p>
-        <div style="background: #eadfd2; border-left: 3px solid #a6603a; padding: 14px 18px;">
+        <div style="background: #f1ede7; border-left: 3px solid #a6603a; padding: 14px 18px;">
           <p style="margin: 0; font-size: 14px; line-height: 23px; color: #4a403a;">Ginger and fresh tomato added. Ten others were already covered.</p>
         </div>
         <p style="margin: 12px 0 0; font-size: 13px; line-height: 21px; color: #9a8d82;">Slides in on the same 140ms curve, holds 6s, fades on 90ms.</p>
@@ -253,10 +253,27 @@
 
       <div>
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Nothing here yet</p>
-        <div style="border: 1px dashed #dccbb8; padding: 22px 20px;">
+        <div style="border: 1px dashed #d8d2ca; padding: 22px 20px;">
           <p style="margin: 0 0 10px; font-family: Newsreader, Georgia, serif; font-size: 21px; font-weight: 400;">The freezer is empty.</p>
           <p style="margin: 0 0 14px; font-size: 14px; line-height: 22px; color: #6b5f56;">Put something in, or ask the agent to.</p>
-          <span style="display: inline-block; background: #a6603a; color: #f6f1e8; padding: 9px 16px; font-size: 13px; font-weight: 600;">Add to the freezer</span>
+          <span style="display: inline-block; background: #a6603a; color: #fbfaf7; padding: 9px 16px; font-size: 13px; font-weight: 600;">Add to the freezer</span>
+        </div>
+      </div>
+
+      <div>
+        <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Guided disclosure</p>
+        <div style="border-top: 1px solid #d8d2ca; border-bottom: 1px solid #d8d2ca; padding: 14px 0;">
+          <span style="font-size: 14px; color: #8a4d2c;">How to connect an AI assistant</span>
+          <p style="margin: 10px 0 0; font-size: 13px; line-height: 21px; color: #6b5f56;">A short numbered guide opens below the label without covering the page.</p>
+        </div>
+      </div>
+
+      <div>
+        <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Recipe photo</p>
+        <div style="border: 1px dashed #d8d2ca; padding: 22px 20px;">
+          <p style="margin: 0 0 8px; font-family: Newsreader, Georgia, serif; font-size: 21px;">Add the recipe card or finished dish</p>
+          <p style="margin: 0 0 14px; font-size: 13px; line-height: 21px; color: #6b5f56;">JPG, PNG or WebP. Compressed and kept in this browser.</p>
+          <span style="display: inline-block; border: 1px solid #a6603a; color: #8a4d2c; padding: 9px 16px; font-size: 13px; font-weight: 600;">Choose image</span>
         </div>
       </div>
 
@@ -267,19 +284,19 @@
           <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56; flex-grow: 1;">Use first</p>
           <span style="font-size: 13px; color: #9a8d82;">3 items</span>
         </div>
-        <div style="display: flex;"><span style="width: 56px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #ddd3c4;"></span></div>
+        <div style="display: flex;"><span style="width: 56px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #dedad4;"></span></div>
         <p style="margin: 14px 0 0; font-size: 13px; line-height: 21px; color: #9a8d82;">Marker, label, split rule. This is what replaces a card border everywhere in the app.</p>
       </div>
 
       <div style="grid-column: 1 / -1;">
         <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #9a8d82;">Confirmation dialog</p>
-        <div style="background: #e5dccd; padding: 34px;">
-          <div style="width: 470px; max-width: 100%; margin: 0 auto; background: #fdfaf4; padding: 30px 34px; box-shadow: 0 18px 44px rgba(70, 52, 38, 0.16); box-sizing: border-box;">
+        <div style="background: #ebe6df; padding: 34px;">
+          <div style="width: 470px; max-width: 100%; margin: 0 auto; background: #ffffff; padding: 30px 34px; box-shadow: 0 18px 44px rgba(70, 52, 38, 0.16); box-sizing: border-box;">
             <p style="margin: 0 0 18px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #a6603a;">Before anything is thrown away</p>
             <h3 style="margin: 0 0 12px; font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 400; line-height: 36px;">Throw out the spinach?</h3>
             <p style="margin: 0 0 26px; font-size: 15px; line-height: 25px; color: #6b5f56;">This removes 200 g from the fridge. It cannot be undone.</p>
             <div style="display: flex; gap: 16px; align-items: center;">
-              <span style="background: #a83e28; color: #fdfaf4; padding: 11px 20px; font-size: 14px; font-weight: 600;">Throw it out</span>
+              <span style="background: #a83e28; color: #ffffff; padding: 11px 20px; font-size: 14px; font-weight: 600;">Throw it out</span>
               <span style="font-size: 14px; color: #6b5f56; border-bottom: 1px solid #c9bcab; padding-bottom: 3px;">Keep it</span>
             </div>
           </div>

@@ -8,7 +8,8 @@ import {
 import { z } from "zod";
 import { clearAgentActivity } from "./agent-activity-store";
 import { createDemoInventory } from "../data/demo-kitchen";
-import { getRecipeById } from "../data/recipes";
+import { getAllRecipes, getRecipeById } from "../data/recipes";
+import { createCustomRecipe } from "../domain/custom-recipes";
 import {
   addGroceryItem,
   addMissingRecipeIngredients,
@@ -37,9 +38,20 @@ import {
   type InventoryEdit,
   type InventoryItem,
 } from "../schemas/inventory";
+import {
+  customRecipeDraftSchema,
+  recipeSchema,
+  type CustomRecipeDraft,
+  type Recipe,
+} from "../schemas/recipe";
 
 export const KITCHEN_STORAGE_KEY = "pantryos-kitchen";
-export const KITCHEN_SCHEMA_VERSION = 2;
+export const KITCHEN_SCHEMA_VERSION = 4;
+const MAX_RECIPE_PHOTO_STORAGE = 2_000_000;
+// add_recipe is unconfirmed, so an agent can call it in a loop. Without a
+// ceiling the persisted payload grows until localStorage rejects the write,
+// which takes the inventory and grocery list down with it.
+const MAX_CUSTOM_RECIPES = 60;
 
 // Items are validated one at a time in cleanPersistedState rather than as a
 // typed array here. All-or-nothing validation would let a single unreadable row
@@ -48,6 +60,7 @@ const persistedKitchenSchema = z.object({
   hasInitialized: z.boolean(),
   inventory: z.array(z.unknown()),
   groceries: z.array(z.unknown()).optional(),
+  customRecipes: z.array(z.unknown()).optional(),
 });
 
 // Versioning is persist's `version` option, not a field carried in state.
@@ -55,13 +68,18 @@ export interface PersistedKitchenState {
   hasInitialized: boolean;
   inventory: InventoryItem[];
   groceries: GroceryItem[];
+  customRecipes: Recipe[];
 }
 
 export interface KitchenStoreState extends PersistedKitchenState {
   hasHydrated: boolean;
   addGrocery: (input: GroceryDraft) => GroceryAddResult;
   addInventory: (input: InventoryDraft) => InventoryItem;
-  addRecipeToGroceries: (recipeId: string) => GroceryAddResult;
+  addCustomRecipe: (input: CustomRecipeDraft) => Recipe;
+  addRecipeToGroceries: (
+    recipeId: string,
+    targetServings?: number,
+  ) => GroceryAddResult;
   clearCheckedGroceries: () => void;
   consumeInventory: (
     itemId: string,
@@ -99,7 +117,19 @@ function cleanPersistedState(value: unknown): PersistedKitchenState | null {
     const item = groceryItemSchema.safeParse(candidate);
     if (item.success) groceries.push(item.data);
   }
-  return { hasInitialized: parsed.data.hasInitialized, inventory, groceries };
+  const customRecipes: Recipe[] = [];
+  for (const candidate of parsed.data.customRecipes ?? []) {
+    const recipe = recipeSchema.safeParse(candidate);
+    if (recipe.success && recipe.data.id.startsWith("custom-")) {
+      customRecipes.push(recipe.data);
+    }
+  }
+  return {
+    hasInitialized: parsed.data.hasInitialized,
+    inventory,
+    groceries,
+    customRecipes,
+  };
 }
 
 /**
@@ -122,7 +152,10 @@ function createResilientStorage(): PersistStorage<PersistedKitchenState> {
   function write(name: string, value: string) {
     try {
       localStorage.setItem(name, value);
-    } catch {
+    } catch (error) {
+      // Memory keeps this session working, but the kitchen is no longer being
+      // saved. Say so rather than losing everything silently on reload.
+      console.warn("Kitchen state could not be saved to this browser", error);
       fallback.set(name, value);
     }
   }
@@ -185,6 +218,7 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
           hasInitialized: false,
           inventory: [],
           groceries: [],
+          customRecipes: [],
           hasHydrated: false,
           initialize: () => {
             if (get().hasInitialized) return;
@@ -192,6 +226,7 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
               hasInitialized: true,
               inventory: createDemoInventory(now()),
               groceries: [],
+              customRecipes: [],
             });
           },
           setHasHydrated: (value) => set({ hasHydrated: value }),
@@ -201,21 +236,51 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
               hasInitialized: true,
               inventory: createDemoInventory(now()),
               groceries: [],
+              customRecipes: [],
             });
+          },
+          addCustomRecipe: (input) => {
+            const draft = customRecipeDraftSchema.parse(input);
+            if (get().customRecipes.length >= MAX_CUSTOM_RECIPES) {
+              throw new Error(
+                `This kitchen holds up to ${MAX_CUSTOM_RECIPES} saved recipes. Remove one before adding another.`,
+              );
+            }
+            const photoBytes = get().customRecipes.reduce(
+              (total, recipe) => total + (recipe.photo?.dataUrl.length ?? 0),
+              draft.photo?.dataUrl.length ?? 0,
+            );
+            if (photoBytes > MAX_RECIPE_PHOTO_STORAGE) {
+              throw new Error(
+                "Recipe photos have reached this browser's 2 MB storage limit.",
+              );
+            }
+            const recipe = createCustomRecipe(
+              getAllRecipes(get().customRecipes),
+              draft,
+            );
+            set({ customRecipes: [...get().customRecipes, recipe] });
+            return recipe;
           },
           addGrocery: (input) => {
             const result = addGroceryItem(get().groceries, input, now());
             set({ groceries: result.items });
             return result;
           },
-          addRecipeToGroceries: (recipeId) => {
-            const recipe = getRecipeById(recipeId);
+          addRecipeToGroceries: (recipeId, targetServings) => {
+            const recipe = getRecipeById(
+              recipeId,
+              getAllRecipes(get().customRecipes),
+            );
             if (!recipe) throw new Error(`No recipe has id "${recipeId}".`);
             const match = matchRecipe(recipe, get().inventory, now());
             const result = addMissingRecipeIngredients(
               get().groceries,
               match,
               now(),
+              targetServings === undefined
+                ? 1
+                : targetServings / recipe.servings,
             );
             set({ groceries: result.items });
             return result;
@@ -268,6 +333,7 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
           hasInitialized: state.hasInitialized,
           inventory: state.inventory,
           groceries: state.groceries,
+          customRecipes: state.customRecipes,
         }),
         // A migrated payload flows straight into merge, which is where the one
         // sanitising pass happens — for older versions and current ones alike.

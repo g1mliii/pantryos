@@ -4,22 +4,31 @@ import {
   findUsableInventoryItem,
   type RecipeMatch,
 } from "../../domain/recipe-matching";
+import { distinctMissingIngredients } from "../../domain/groceries";
 import { spellNumber } from "../../domain/number-words";
-import { formatDisplayQuantity } from "../../domain/units";
+import { isNewSection } from "../../domain/recipe-sections";
+import {
+  formatRecipeAmount,
+  type RecipeUnitMode,
+} from "../../domain/recipe-units";
 import type { InventoryItem } from "../../schemas/inventory";
 
 interface RecipeIngredientListProps {
   inventory: readonly InventoryItem[];
   match: RecipeMatch;
   onAddMissing: () => void;
+  servingFactor: number;
   today: Date;
+  unitMode: RecipeUnitMode;
 }
 
 export function RecipeIngredientList({
   inventory,
   match,
   onAddMissing,
+  servingFactor,
   today,
+  unitMode,
 }: RecipeIngredientListProps) {
   const listedIngredients = match.recipe.ingredients.filter(
     (ingredient) => !match.staples.includes(ingredient),
@@ -30,7 +39,9 @@ export function RecipeIngredientList({
   const optionalMissingNames = new Set(
     match.optionalMissing.map((ingredient) => ingredient.normalizedName),
   );
-  const missingCount = match.missing.length;
+  // Counts the rows the grocery list will gain, not the raw ingredient rows:
+  // a name repeated across sections is merged into one item when added.
+  const missingCount = distinctMissingIngredients(match.missing).length;
   const addLabel =
     missingCount === 0
       ? "Everything needed is covered"
@@ -44,7 +55,7 @@ export function RecipeIngredientList({
     <section>
       <SectionHeading>You need</SectionHeading>
       <div>
-        {listedIngredients.map((ingredient) => {
+        {listedIngredients.map((ingredient, index) => {
           const inventoryItem = findUsableInventoryItem(
             ingredient,
             inventory,
@@ -57,39 +68,44 @@ export function RecipeIngredientList({
           const expiry = inventoryItem?.expiryDate
             ? getExpiryDetails(inventoryItem.expiryDate, today)
             : null;
+          const showSection = isNewSection(listedIngredients, index);
           return (
             <div
-              className="flex items-baseline gap-3 border-b border-rule-faint py-3 last:border-b-0"
-              key={`${ingredient.normalizedName}-${ingredient.optional ? "optional" : "required"}`}
+              className="border-b border-rule-faint last:border-b-0"
+              key={`${ingredient.normalizedName}-${index}`}
             >
-              <span
-                className={`w-[62px] shrink-0 text-sm ${isMissing ? "text-ink-ghost" : "text-ink-muted"}`}
-              >
-                {formatDisplayQuantity(
-                  ingredient.quantity,
-                  ingredient.displayUnit,
-                )}
-              </span>
-              <span
-                className={`grow font-serif text-xl ${isMissing ? "text-copper" : "text-ink"}`}
-              >
-                {ingredient.name}
-              </span>
-              {expiry ? (
-                <FreshnessMarker
-                  daysRemaining={expiry.daysRemaining ?? undefined}
-                  label={expiry.label}
-                  status={expiry.status}
-                />
-              ) : isMissing ? (
-                <span className="bg-copper px-2 py-1 text-[11px] font-semibold tracking-[0.04em] text-paper uppercase">
-                  To buy
-                </span>
-              ) : isOptionalMissing ? (
-                <span className="text-[11px] font-semibold tracking-[0.08em] text-ink-faint uppercase">
-                  Optional
-                </span>
+              {showSection ? (
+                <p className="pt-5 pb-1 text-xs font-semibold tracking-[0.12em] text-copper-deep uppercase">
+                  {ingredient.section}
+                </p>
               ) : null}
+              <div className="flex items-baseline gap-3 py-3">
+                <span
+                  className={`w-[62px] shrink-0 text-sm ${isMissing ? "text-ink-ghost" : "text-ink-muted"}`}
+                >
+                  {formatRecipeAmount(ingredient, servingFactor, unitMode)}
+                </span>
+                <span
+                  className={`grow font-serif text-xl ${isMissing ? "text-copper" : "text-ink"}`}
+                >
+                  {ingredient.name}
+                </span>
+                {expiry ? (
+                  <FreshnessMarker
+                    daysRemaining={expiry.daysRemaining ?? undefined}
+                    label={expiry.label}
+                    status={expiry.status}
+                  />
+                ) : isMissing ? (
+                  <span className="bg-copper px-2 py-1 text-[11px] font-semibold tracking-[0.04em] text-paper uppercase">
+                    To buy
+                  </span>
+                ) : isOptionalMissing ? (
+                  <span className="text-[11px] font-semibold tracking-[0.08em] text-ink-faint uppercase">
+                    Optional
+                  </span>
+                ) : null}
+              </div>
             </div>
           );
         })}

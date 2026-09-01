@@ -63,4 +63,33 @@ describe("RecipesPage", () => {
       screen.queryByRole("heading", { name: "Egg Fried Rice" }),
     ).toBeNull();
   });
+
+  it("saves a personal recipe into the local recipe collection", () => {
+    render(
+      <MemoryRouter>
+        <RecipesPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a recipe" }));
+    expect(screen.queryByRole("button", { name: "Choose File" })).toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Recipe name" }), {
+      target: { value: "Tomato Toast" },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Short description" }),
+      { target: { value: "A quick lunch." } },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Ingredients" }), {
+      target: { value: "2 tomatoes\n2 bread" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Directions" }), {
+      target: { value: "Toast the bread.\nAdd the tomatoes." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save recipe" }));
+
+    expect(kitchenStore.getState().customRecipes).toMatchObject([
+      { id: "custom-tomato-toast", title: "Tomato Toast" },
+    ]);
+  });
 });

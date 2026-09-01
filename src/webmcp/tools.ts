@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RECIPES, getRecipeById } from "../data/recipes";
+import { getAllRecipes, getRecipeById } from "../data/recipes";
 import {
   daysUntilExpiry,
   getExpiryDetails,
@@ -10,6 +10,7 @@ import {
   InventoryDomainError,
 } from "../domain/inventory";
 import { resolveInventoryItem } from "../domain/inventory-resolution";
+import { joinNames } from "../domain/number-words";
 import { findRecipes } from "../domain/recipe-matching";
 import { formatDisplayQuantity, formatQuantity } from "../domain/units";
 import {
@@ -18,6 +19,7 @@ import {
   locationSchema,
   type InventoryItem,
 } from "../schemas/inventory";
+import { recipeUnitSchema } from "../schemas/recipe";
 import {
   requestConfirmation,
   type ConfirmationDecision,
@@ -188,6 +190,150 @@ const recipeIdInput = z
   })
   .strict();
 
+const recipeIngredientToolBase = {
+  name: toolName.describe("The ingredient name as it should appear."),
+  optional: z
+    .boolean()
+    .optional()
+    .describe("True only when the recipe can be made without this ingredient."),
+  section: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .optional()
+    .describe("Optional ingredient group, such as Sauce or To finish."),
+};
+
+const recipeIngredientToolSchema = z.union([
+  z
+    .object({
+      ...recipeIngredientToolBase,
+      quantity: z
+        .number()
+        .finite()
+        .positive()
+        .max(1_000_000)
+        .describe("The numeric ingredient amount."),
+      displayUnit: recipeUnitSchema.describe(
+        "The unit paired with the ingredient quantity.",
+      ),
+    })
+    .strict(),
+  z.object(recipeIngredientToolBase).strict(),
+]);
+
+const recipeStepToolSchema = z
+  .object({
+    instruction: z
+      .string()
+      .trim()
+      .min(1)
+      .max(800)
+      .describe("One complete recipe direction."),
+    section: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .optional()
+      .describe("Optional method group, such as Prepare or Bake."),
+    note: z
+      .string()
+      .trim()
+      .min(1)
+      .max(300)
+      .optional()
+      .describe("A useful cook's note tied to this step."),
+  })
+  .strict();
+
+const recipeTimingToolSchema = z
+  .union([
+    z
+      .object({
+        totalMinutes: z
+          .number()
+          .int()
+          .positive()
+          .max(480)
+          .describe(
+            "Total elapsed minutes when separate prep and cooking times are unavailable.",
+          ),
+      })
+      .strict(),
+    z
+      .object({
+        prepMinutes: z
+          .number()
+          .int()
+          .min(0)
+          .max(480)
+          .describe("Minutes spent preparing ingredients."),
+        cookMinutes: z
+          .number()
+          .int()
+          .min(0)
+          .max(480)
+          .describe("Minutes spent cooking the recipe."),
+      })
+      .strict()
+      .refine(
+        (timing) => timing.prepMinutes > 0 || timing.cookMinutes > 0,
+        "Give the recipe some prep or cooking time",
+      ),
+  ])
+  .describe(
+    "Use either one total time or separate prep and cooking times; PantryOS derives the total for separate times.",
+  );
+
+const addRecipeInput = z
+  .object({
+    title: toolName.describe("The recipe name."),
+    description: z
+      .string()
+      .trim()
+      .min(1)
+      .max(500)
+      .describe("A concise description of the finished recipe."),
+    servings: z
+      .number()
+      .int()
+      .positive()
+      .max(24)
+      .describe("How many servings the unscaled recipe makes."),
+    timing: recipeTimingToolSchema,
+    ingredients: z
+      .array(recipeIngredientToolSchema)
+      .min(1)
+      .max(40)
+      .describe("The complete ingredient list in recipe order."),
+    steps: z
+      .array(recipeStepToolSchema)
+      .min(1)
+      .max(30)
+      .describe("The complete ordered method."),
+  })
+  .strict();
+
+const addRecipeToGroceriesInput = z
+  .object({
+    recipeId: z
+      .string()
+      .min(1)
+      .max(160)
+      .regex(/\S/, "Give the recipe id")
+      .describe("The exact recipeId returned by find_recipes."),
+    targetServings: z
+      .number()
+      .int()
+      .positive()
+      .max(24)
+      .optional()
+      .describe("Scale missing ingredient amounts for this many servings."),
+  })
+  .strict();
+
 const noInput = z.object({}).strict();
 
 const locatorJsonConstraint = {
@@ -226,6 +372,23 @@ function compactInventoryItem(item: InventoryItem, today: Date) {
     expiryDate: item.expiryDate,
     freshness: freshness.label,
   };
+}
+
+function matchesConfirmedInventoryItem(
+  current: InventoryItem,
+  confirmed: InventoryItem,
+) {
+  return (
+    current.id === confirmed.id &&
+    current.name === confirmed.name &&
+    current.normalizedName === confirmed.normalizedName &&
+    current.quantity === confirmed.quantity &&
+    current.canonicalUnit === confirmed.canonicalUnit &&
+    current.displayUnit === confirmed.displayUnit &&
+    current.location === confirmed.location &&
+    current.expiryDate === confirmed.expiryDate &&
+    current.updatedAt === confirmed.updatedAt
+  );
 }
 
 function readableError(caught: unknown) {
@@ -486,12 +649,27 @@ export function createPantryTools(
             );
           }
           const current = getKitchenState();
-          if (
-            !current.inventory.some((candidate) => candidate.id === item.id)
-          ) {
+          const currentItem = current.inventory.find(
+            (candidate) => candidate.id === item.id,
+          );
+          if (!currentItem) {
             return toolFailure(
               `${item.name} is no longer in inventory. Call get_inventory before retrying.`,
               "item_not_found",
+            );
+          }
+          const currentAlsoStored = current.inventory.filter(
+            (candidate) =>
+              candidate.id !== item.id &&
+              candidate.normalizedName === item.normalizedName,
+          ).length;
+          if (
+            !matchesConfirmedInventoryItem(currentItem, item) ||
+            currentAlsoStored !== alsoStored
+          ) {
+            return toolFailure(
+              `${item.name} changed while approval was open. Call get_inventory and ask again before removing it.`,
+              "inventory_changed",
             );
           }
           current.removeInventory(item.id);
@@ -509,14 +687,15 @@ export function createPantryTools(
       name: "find_recipes",
       title: "Find recipes for this kitchen",
       description:
-        "Use to rank up to five curated recipes by current ingredients, expiry urgency, time, and missing-item limits. Use get_recipe afterward for full instructions; do not invent recipes here.",
+        "Use to rank up to five available recipes by current ingredients, expiry urgency, time, and missing-item limits. This includes recipes the user saved. Use get_recipe afterward for full instructions; do not invent recipes here.",
       inputSchema: toToolJsonSchema(findRecipesInput),
-      // Curated recipes, but expiringUsed echoes stored inventory names.
+      // Saved recipes and expiringUsed can both echo user-authored text.
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: createToolExecutor("find_recipes", findRecipesInput, (input) => {
+        const state = getKitchenState();
         const search = findRecipes(
-          RECIPES,
-          getKitchenState().inventory,
+          getAllRecipes(state.customRecipes),
+          state.inventory,
           input,
           now(),
         );
@@ -536,7 +715,7 @@ export function createPantryTools(
         }));
         return toolSuccess(
           results.length === 0
-            ? "No curated recipes match those filters."
+            ? "No recipes match those filters."
             : `${results.length} ${results.length === 1 ? "match" : "matches"}; ${results[0]!.title} ranks first.`,
           { results, totalMatches: search.totalMatches },
         );
@@ -544,17 +723,20 @@ export function createPantryTools(
     },
     {
       name: "get_recipe",
-      title: "Read a curated recipe",
+      title: "Read a recipe",
       description:
         "Use with a recipeId from find_recipes to read its ingredients and method. Do not use to search, rank, or change groceries.",
       inputSchema: toToolJsonSchema(recipeIdInput),
-      annotations: { readOnlyHint: true, untrustedContentHint: false },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: createToolExecutor("get_recipe", recipeIdInput, (input) => {
         const recipeId = input.recipeId.trim();
-        const recipe = getRecipeById(recipeId);
+        const recipe = getRecipeById(
+          recipeId,
+          getAllRecipes(getKitchenState().customRecipes),
+        );
         if (!recipe) {
           return toolFailure(
-            `No curated recipe has id "${recipeId}". Call find_recipes for valid ids.`,
+            `No recipe has id "${recipeId}". Call find_recipes for valid ids.`,
             "recipe_not_found",
           );
         }
@@ -565,18 +747,44 @@ export function createPantryTools(
             title: recipe.title,
             description: recipe.description,
             servings: recipe.servings,
+            prepMinutes: recipe.prepMinutes,
+            cookMinutes: recipe.cookMinutes,
             totalMinutes: recipe.totalMinutes,
+            hasPhoto: recipe.photo !== undefined,
             ingredients: recipe.ingredients.map((ingredient) => ({
               name: ingredient.name,
-              quantity: formatDisplayQuantity(
-                ingredient.quantity,
-                ingredient.displayUnit,
-              ),
+              quantity: ingredient.quantity,
+              displayUnit: ingredient.displayUnit,
               optional: ingredient.optional ?? false,
+              section: ingredient.section,
             })),
             steps: recipe.steps,
           },
         );
+      }),
+    },
+    {
+      name: "add_recipe",
+      title: "Save a recipe",
+      description:
+        "Use to save a complete recipe, including one extracted from text or an image attached in the AI conversation. Send one timing form plus structured ingredients and steps; PantryOS recipe photos are added separately in the browser form.",
+      inputSchema: toToolJsonSchema(addRecipeInput),
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
+      execute: createToolExecutor("add_recipe", addRecipeInput, (input) => {
+        const { timing, ...recipeFields } = input;
+        // createCustomRecipe derives the total from prep plus cook, so either
+        // timing form can be passed straight through.
+        const recipe = getKitchenState().addCustomRecipe({
+          ...recipeFields,
+          ...timing,
+        });
+        return toolSuccess(`Saved ${recipe.title} to your recipes.`, {
+          recipeId: recipe.id,
+          title: recipe.title,
+          servings: recipe.servings,
+          totalMinutes: recipe.totalMinutes,
+          hasPhoto: false,
+        });
       }),
     },
     {
@@ -629,23 +837,29 @@ export function createPantryTools(
       name: "add_recipe_to_grocery_list",
       title: "Add a recipe's missing groceries",
       description:
-        "Use after a recipe is chosen to add only its currently missing required non-staple ingredients. Do not add optional ingredients or duplicate existing grocery items.",
-      inputSchema: toToolJsonSchema(recipeIdInput),
-      // Curated recipes, but skipped[] echoes stored grocery names.
+        "Use after a recipe is chosen to add only its currently missing required non-staple ingredients, scaled to optional targetServings. Do not add optional ingredients or duplicate existing grocery items.",
+      inputSchema: toToolJsonSchema(addRecipeToGroceriesInput),
+      // Saved recipes and skipped[] can both echo user-authored text.
       annotations: { readOnlyHint: false, untrustedContentHint: true },
       execute: createToolExecutor(
         "add_recipe_to_grocery_list",
-        recipeIdInput,
+        addRecipeToGroceriesInput,
         (input) => {
           const recipeId = input.recipeId.trim();
-          const recipe = getRecipeById(recipeId);
+          const recipe = getRecipeById(
+            recipeId,
+            getAllRecipes(getKitchenState().customRecipes),
+          );
           if (!recipe) {
             return toolFailure(
-              `No curated recipe has id "${recipeId}". Call find_recipes for valid ids.`,
+              `No recipe has id "${recipeId}". Call find_recipes for valid ids.`,
               "recipe_not_found",
             );
           }
-          const result = getKitchenState().addRecipeToGroceries(recipe.id);
+          const result = getKitchenState().addRecipeToGroceries(
+            recipe.id,
+            input.targetServings,
+          );
           const added = result.added.map((item) => item.name);
           const skipped = result.skipped.map(({ item, reason }) => ({
             name: item.name,
@@ -653,10 +867,11 @@ export function createPantryTools(
           }));
           return toolSuccess(
             added.length > 0
-              ? `Added ${added.join(" and ")} for ${recipe.title}; skipped ${result.skipped.length} already listed.`
+              ? `Added ${joinNames(added)} for ${recipe.title}; skipped ${result.skipped.length} already listed.`
               : `Nothing new was added for ${recipe.title}; every missing item was already listed.`,
             {
               recipeId: recipe.id,
+              targetServings: input.targetServings ?? recipe.servings,
               added,
               skipped,
               skippedCount: skipped.length,

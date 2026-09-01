@@ -12,7 +12,7 @@ export function DebugPage({ webMcpStatus }: DebugPageProps) {
   return (
     <>
       <PageIntro
-        description={`This development-only view shows all ten tool contracts and runs them through document.modelContext, the path an agent uses. Registration is ${webMcpStatus.state}.`}
+        description={`This development-only view shows all ${webMcpStatus.total} tool contracts and runs them through document.modelContext, the path an agent uses. Registration is ${webMcpStatus.state}.`}
         eyebrow="Debug"
         title="Inspect the tool surface."
       />

@@ -78,6 +78,16 @@ describe("kitchen persistence and initialization", () => {
       .getState()
       .consumeInventory("chicken-breast", { quantity: 400, unit: "g" });
     firstLoad.getState().addRecipeToGroceries("chicken-saag");
+    firstLoad.getState().addCustomRecipe({
+      title: "Tomato Toast",
+      description: "A quick lunch.",
+      servings: 1,
+      totalMinutes: 8,
+      ingredients: [
+        { name: "fresh tomato", quantity: 2, displayUnit: "count" },
+      ],
+      steps: [{ instruction: "Toast and top." }],
+    });
 
     const reloaded = makeStore();
     expect(
@@ -90,6 +100,9 @@ describe("kitchen persistence and initialization", () => {
     expect(
       reloaded.getState().groceries.map((item) => item.normalizedName),
     ).toEqual(["ginger", "fresh tomato"]);
+    expect(reloaded.getState().customRecipes[0]?.id).toBe(
+      "custom-tomato-toast",
+    );
 
     for (const item of reloaded.getState().inventory) {
       reloaded.getState().removeInventory(item.id);
@@ -108,10 +121,77 @@ describe("kitchen persistence and initialization", () => {
       resetInventory.find((item) => item.id === "chicken-breast")?.quantity,
     ).toBe(600);
     expect(emptyReload.getState().groceries).toEqual([]);
+    expect(emptyReload.getState().customRecipes).toEqual([]);
   });
 });
 
 describe("kitchen recovery from damaged storage", () => {
+  it("migrates old string recipe steps into the rich step shape", () => {
+    const store = createKitchenStore({
+      now: () => AT_NINE,
+      storage: seededStorage({
+        hasInitialized: true,
+        inventory: [],
+        groceries: [],
+        customRecipes: [
+          {
+            id: "custom-old-toast",
+            title: "Old Toast",
+            description: "Saved before rich recipe steps.",
+            servings: 1,
+            totalMinutes: 5,
+            ingredients: [
+              {
+                name: "bread",
+                normalizedName: "bread",
+                quantity: 1,
+                displayUnit: "count",
+              },
+            ],
+            steps: ["Toast the bread."],
+          },
+        ],
+      }),
+    });
+
+    expect(store.getState().customRecipes[0]?.steps).toEqual([
+      { instruction: "Toast the bread." },
+    ]);
+  });
+
+  it("rejects recipe photos once the browser-wide photo budget is full", () => {
+    const store = createKitchenStore({ now: () => AT_NINE });
+    const photo = {
+      dataUrl: `data:image/webp;base64,${"A".repeat(399_970)}`,
+      alt: "Audit recipe",
+    };
+
+    for (let index = 1; index <= 5; index += 1) {
+      store.getState().addCustomRecipe({
+        title: `Photo recipe ${index}`,
+        description: "A browser photo budget fixture.",
+        servings: 1,
+        totalMinutes: 5,
+        photo,
+        ingredients: [{ name: "bread" }],
+        steps: [{ instruction: "Serve." }],
+      });
+    }
+
+    expect(() =>
+      store.getState().addCustomRecipe({
+        title: "Photo recipe 6",
+        description: "This one exceeds the browser photo budget.",
+        servings: 1,
+        totalMinutes: 5,
+        photo,
+        ingredients: [{ name: "bread" }],
+        steps: [{ instruction: "Serve." }],
+      }),
+    ).toThrow("2 MB storage limit");
+    expect(store.getState().customRecipes).toHaveLength(5);
+  });
+
   it("keeps the readable rows when one stored item is unusable", () => {
     const store = createKitchenStore({
       now: () => AT_NINE,

@@ -163,8 +163,10 @@ export function findRecipes(
     .map((recipe) => evaluateRecipe(recipe, inventory, today))
     .filter(
       (match) =>
-        filters.maxMissingIngredients === undefined ||
-        match.missing.length <= filters.maxMissingIngredients,
+        (filters.maxMissingIngredients === undefined ||
+          match.missing.length <= filters.maxMissingIngredients) &&
+        (filters.minMissingIngredients === undefined ||
+          match.missing.length >= filters.minMissingIngredients),
     );
   const maxRawUrgency = pending.reduce(
     (maximum, match) => Math.max(maximum, match.rawUrgency),

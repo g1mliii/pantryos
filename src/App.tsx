@@ -29,11 +29,14 @@ export default function App() {
       <div aria-hidden="true" className="h-[5px] bg-copper" />
 
       <header className="border-b border-rule">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-6 px-10 py-5">
+        <div className="mx-auto flex max-w-[1240px] flex-col items-start gap-5 px-10 py-5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
           <NavLink className="font-serif text-[25px] tracking-[0.01em]" to="/">
             Pantry<span className="text-copper">OS</span>
           </NavLink>
-          <nav aria-label="Primary" className="flex flex-wrap gap-[34px]">
+          <nav
+            aria-label="Primary"
+            className="grid w-full grid-cols-2 gap-x-8 gap-y-4 sm:flex sm:w-auto sm:flex-wrap sm:gap-[34px]"
+          >
             {navigation.map(([to, label]) => (
               <NavLink
                 className={({ isActive }) =>

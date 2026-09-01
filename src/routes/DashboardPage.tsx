@@ -1,29 +1,54 @@
 import { format } from "date-fns";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { RecipeResult } from "../components/recipes/RecipeResult";
 import {
   Button,
   FreshnessMarker,
   PageIntro,
   SectionHeading,
 } from "../components/ui";
+import { getAllRecipes } from "../data/recipes";
 import { getExpiryDetails, getUseFirstItems } from "../domain/expiry";
 import { countInventoryByLocation } from "../domain/inventory";
-import { capitalize, pluralize, spellNumber } from "../domain/number-words";
+import { findRecipes } from "../domain/recipe-matching";
+import { pluralize, spellNumber } from "../domain/number-words";
 import { formatQuantity } from "../domain/units";
 import { requestConfirmation } from "../stores/confirmation-store";
 import { useKitchenStore } from "../stores/kitchen-store";
 import { useToday } from "../stores/today-store";
 export function DashboardPage() {
   const inventory = useKitchenStore((state) => state.inventory);
+  const customRecipes = useKitchenStore((state) => state.customRecipes);
   const resetDemo = useKitchenStore((state) => state.resetDemo);
   const today = useToday();
   const useFirst = getUseFirstItems(inventory, today, 3);
   const locationCounts = countInventoryByLocation(inventory);
-  const amount = capitalize(spellNumber(useFirst.length));
+  const amount = spellNumber(useFirst.length);
   const title =
     useFirst.length === 0
-      ? "Nothing needs using in the next three days."
-      : `${amount} ${pluralize(useFirst.length, "thing wants", "things want")} using soon.`;
+      ? "Nothing needs using soon."
+      : useFirst.length === 1
+        ? "Use this ingredient soon."
+        : `Use these ${amount} ingredients soon.`;
+  const firstExpiry = useFirst[0]
+    ? getExpiryDetails(useFirst[0].expiryDate, today)
+    : undefined;
+  const bestRecipe = useMemo(
+    () =>
+      findRecipes(
+        getAllRecipes(customRecipes),
+        inventory,
+        {
+          maxMinutes: 45,
+          maxMissingIngredients: 2,
+          prioritizeExpiring: true,
+        },
+        today,
+        1,
+      ).results[0],
+    [customRecipes, inventory, today],
+  );
 
   async function confirmReset() {
     const decision = await requestConfirmation({
@@ -42,8 +67,10 @@ export function DashboardPage() {
       <PageIntro
         description={
           useFirst.length === 0
-            ? "Your dated inventory is clear for now."
-            : `${useFirst[0]?.name ?? "Something"} goes first. Expired food stays visible until you decide what to do with it.`
+            ? "Your dated food is in good shape for the next three days."
+            : firstExpiry?.status === "expired"
+              ? `${useFirst[0]?.name} is past its date. Check it and decide whether to keep or remove it.`
+              : `${useFirst[0]?.name} expires first. Start there to make the most of what you bought.`
         }
         eyebrow={format(today, "EEEE, d MMMM")}
         title={title}
@@ -53,7 +80,7 @@ export function DashboardPage() {
         <SectionHeading
           meta={`${useFirst.length} ${pluralize(useFirst.length, "item")}`}
         >
-          Use first
+          Use soon
         </SectionHeading>
         {useFirst.length === 0 ? (
           <p className="border-b border-rule-soft py-6 text-ink-muted">
@@ -110,17 +137,34 @@ export function DashboardPage() {
         ))}
       </section>
 
+      {bestRecipe ? (
+        <section className="mt-14">
+          <SectionHeading
+            meta={
+              <Link className="text-copper-deep" to="/recipes">
+                See all recipes
+              </Link>
+            }
+          >
+            Cook next
+          </SectionHeading>
+          <div className="mt-5">
+            <RecipeResult featured match={bestRecipe} />
+          </div>
+        </section>
+      ) : null}
+
       <section className="mt-12">
-        <SectionHeading>Try asking your agent</SectionHeading>
+        <SectionHeading>Ways an AI assistant can help</SectionHeading>
         <div className="pt-4">
           <p className="font-serif text-[17px] leading-7 text-ink-soft italic">
-            “What's expiring soon?”
+            “What should I use first?”
           </p>
           <p className="mt-3.5 font-serif text-[17px] leading-7 text-ink-soft italic">
-            “Find dinner under 30 minutes using what expires first.”
+            “Find a quick dinner that uses food expiring soon.”
           </p>
           <p className="mt-3.5 font-serif text-[17px] leading-7 text-ink-soft italic">
-            “Add what I'm missing to groceries.”
+            “Add the missing ingredients for that meal to my list.”
           </p>
         </div>
       </section>
@@ -128,10 +172,11 @@ export function DashboardPage() {
       <div className="mt-10 flex flex-wrap items-center justify-between gap-6 border-t border-rule pt-7">
         <div>
           <p className="font-serif text-xl">
-            Kitchen state lives in this browser.
+            Your kitchen is saved on this device.
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            The interface and agent tools use the same local kitchen actions.
+            Your food, saved recipes, and grocery list will be here when you
+            come back.
           </p>
         </div>
         <div className="flex items-center gap-6">
@@ -139,10 +184,10 @@ export function DashboardPage() {
             className="border-b border-rule-warm pb-0.5 text-sm text-copper-deep"
             to="/kitchen"
           >
-            Open the kitchen
+            See everything in your kitchen
           </Link>
           <Button onClick={() => void confirmReset()} variant="secondary">
-            Reset Demo
+            Start demo over
           </Button>
         </div>
       </div>

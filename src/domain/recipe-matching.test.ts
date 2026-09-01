@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { createDemoInventory } from "../data/demo-kitchen";
 import { getRecipeById, RECIPES } from "../data/recipes";
 import { toLocalCalendarDate } from "./expiry";
+import { addInventoryItem } from "./inventory";
 import { findRecipes, matchRecipe } from "./recipe-matching";
+import type { InventoryItem } from "../schemas/inventory";
 
 const TODAY = new Date(2026, 7, 27, 9);
 
@@ -104,6 +106,49 @@ describe("recipe filters and ranking", () => {
         TODAY,
       ).results.every((match) => match.missing.length === 0),
     ).toBe(true);
+  });
+
+  it("fills the suggestion limit with recipes that still need shopping", () => {
+    // A well-stocked kitchen is the case that matters: when the highest
+    // ranked recipes are fully covered, filtering after the limit returns
+    // fewer suggestions than exist. The filter has to run before the cut.
+    let inventory: InventoryItem[] = createDemoInventory(TODAY);
+    const filters = { maxMissingIngredients: 3, prioritizeExpiring: true };
+    for (const match of findRecipes(RECIPES, inventory, filters, TODAY, 3)
+      .results) {
+      for (const ingredient of match.missing) {
+        inventory = addInventoryItem(
+          inventory,
+          {
+            name: ingredient.name,
+            quantity: 900,
+            unit: "g",
+            location: "pantry",
+            expiryDate: null,
+          },
+          TODAY,
+        ).items;
+      }
+    }
+
+    const suggestions = findRecipes(
+      RECIPES,
+      inventory,
+      { ...filters, minMissingIngredients: 1 },
+      TODAY,
+      3,
+    ).results;
+
+    expect(suggestions).toHaveLength(3);
+    expect(suggestions.every((match) => match.missing.length >= 1)).toBe(true);
+    expect(suggestions.every((match) => match.missing.length <= 3)).toBe(true);
+    // Over-fetching five and dropping covered recipes afterwards, as the
+    // grocery route once did, surfaces only two of them.
+    expect(
+      findRecipes(RECIPES, inventory, filters, TODAY, 5)
+        .results.filter((match) => match.missing.length > 0)
+        .slice(0, 3),
+    ).toHaveLength(2);
   });
 
   it("returns at most five ranked results", () => {

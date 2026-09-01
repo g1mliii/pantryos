@@ -1,23 +1,46 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { RecipeIngredientList } from "../components/recipes/RecipeIngredientList";
+import { RecipeScaleControls } from "../components/recipes/RecipeScaleControls";
 import { SectionHeading } from "../components/ui";
-import { getRecipeById } from "../data/recipes";
+import { getAllRecipes, getRecipeById } from "../data/recipes";
+import { describeGroceryError } from "../domain/groceries";
+import { joinNames } from "../domain/number-words";
 import { matchRecipe } from "../domain/recipe-matching";
+import { isNewSection } from "../domain/recipe-sections";
+import {
+  formatRecipeTiming,
+  type RecipeUnitMode,
+} from "../domain/recipe-units";
 import { useKitchenStore } from "../stores/kitchen-store";
 import { useToday } from "../stores/today-store";
 
 export function RecipeDetailPage() {
   const { recipeId } = useParams();
   const inventory = useKitchenStore((state) => state.inventory);
+  const customRecipes = useKitchenStore((state) => state.customRecipes);
   const addRecipeToGroceries = useKitchenStore(
     (state) => state.addRecipeToGroceries,
   );
   const today = useToday();
   const [notice, setNotice] = useState<string>();
-  const recipe = recipeId ? getRecipeById(recipeId) : undefined;
+  const [targetServings, setTargetServings] = useState<number>();
+  const [unitMode, setUnitMode] = useState<RecipeUnitMode>("original");
+  // Neither the recipe nor its inventory match depends on the serving or
+  // unit controls, so scaling the recipe must not re-run either.
+  const recipe = useMemo(
+    () =>
+      recipeId
+        ? getRecipeById(recipeId, getAllRecipes(customRecipes))
+        : undefined,
+    [customRecipes, recipeId],
+  );
+  const match = useMemo(
+    () => (recipe ? matchRecipe(recipe, inventory, today) : undefined),
+    [inventory, recipe, today],
+  );
 
-  if (!recipe) {
+  if (!recipe || !match) {
     return (
       <>
         <p className="label-caps mb-[18px] text-copper">Recipe not found</p>
@@ -34,16 +57,26 @@ export function RecipeDetailPage() {
     );
   }
 
-  const currentRecipe = recipe;
-  const match = matchRecipe(currentRecipe, inventory, today);
+  const servings = targetServings ?? recipe.servings;
+  const servingFactor = servings / recipe.servings;
+
+  // Captured so the handler does not depend on narrowing `recipe`.
+  const chosenRecipeId = recipe.id;
 
   function addMissing() {
-    const result = addRecipeToGroceries(currentRecipe.id);
-    setNotice(
-      result.added.length > 0
-        ? `Added ${result.added.map((item) => item.name).join(" and ")} to groceries.`
-        : "Nothing new was added — those ingredients are already on the list.",
-    );
+    // A scaled amount can fall outside what a grocery row accepts, and the
+    // schema throws rather than returning a result. There is no error boundary
+    // above this route, so a raw throw would blank the page.
+    try {
+      const result = addRecipeToGroceries(chosenRecipeId, servings);
+      setNotice(
+        result.added.length > 0
+          ? `Added ${joinNames(result.added.map((item) => item.name))} to groceries.`
+          : "Nothing new was added — those ingredients are already on the list.",
+      );
+    } catch (caught) {
+      setNotice(`Nothing was added. ${describeGroceryError(caught)}`);
+    }
   }
 
   return (
@@ -55,13 +88,20 @@ export function RecipeDetailPage() {
         ← Back to recipes
       </Link>
       <h1 className="font-serif text-[62px] leading-[66px] font-light tracking-[-0.02em]">
-        {currentRecipe.title}
+        {recipe.title}
       </h1>
+      {recipe.photo ? (
+        <img
+          alt={recipe.photo.alt}
+          className="mt-7 aspect-[16/7] w-full border border-rule object-cover"
+          src={recipe.photo.dataUrl}
+        />
+      ) : null}
       <p className="mt-4 max-w-[620px] font-serif text-[22px] leading-[34px] font-light text-ink-soft italic">
-        {currentRecipe.description}
+        {recipe.description}
       </p>
       <p className="mt-5 text-[15px] text-ink-muted">
-        {currentRecipe.totalMinutes} minutes · serves {currentRecipe.servings} ·{" "}
+        {formatRecipeTiming(recipe)} · serves {servings} ·{" "}
         <span className="font-medium text-copper-deep">
           you have {match.have.length} of the{" "}
           {match.have.length + match.missing.length}
@@ -81,6 +121,14 @@ export function RecipeDetailPage() {
         <span className="h-0.5 grow bg-rule" />
       </div>
 
+      <RecipeScaleControls
+        baseServings={recipe.servings}
+        onServingsChange={setTargetServings}
+        onUnitModeChange={setUnitMode}
+        servings={servings}
+        unitMode={unitMode}
+      />
+
       {notice ? (
         <p
           aria-live="polite"
@@ -95,17 +143,35 @@ export function RecipeDetailPage() {
           inventory={inventory}
           match={match}
           onAddMissing={addMissing}
+          servingFactor={servingFactor}
           today={today}
+          unitMode={unitMode}
         />
         <section>
           <SectionHeading>Method</SectionHeading>
           <ol>
-            {currentRecipe.steps.map((step, index) => (
-              <li className="flex gap-5 pt-5" key={step}>
-                <span className="w-7 shrink-0 font-serif text-[26px] leading-[30px] font-light text-copper">
-                  {index + 1}
-                </span>
-                <p className="text-base leading-[30px]">{step}</p>
+            {recipe.steps.map((step, index) => (
+              <li className="pt-5" key={`${step.instruction}-${index}`}>
+                {isNewSection(recipe.steps, index) ? (
+                  <p className="mb-2 text-xs font-semibold tracking-[0.12em] text-copper-deep uppercase">
+                    {step.section}
+                  </p>
+                ) : null}
+                <div className="flex gap-5">
+                  <span className="w-7 shrink-0 font-serif text-[26px] leading-[30px] font-light text-copper">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="text-base leading-[30px]">
+                      {step.instruction}
+                    </p>
+                    {step.note ? (
+                      <p className="mt-2 border-l-2 border-copper-mid pl-4 text-sm leading-6 text-ink-muted italic">
+                        Cook’s note: {step.note}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </li>
             ))}
           </ol>

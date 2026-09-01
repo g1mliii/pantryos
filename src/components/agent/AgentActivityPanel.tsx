@@ -1,4 +1,4 @@
-import { SectionHeading } from "../ui";
+import { GuidedDisclosure, SectionHeading } from "../ui";
 import { useAgentActivityStore } from "../../stores/agent-activity-store";
 import type { PantryToolsStatus } from "../../webmcp/register-tools";
 
@@ -6,15 +6,16 @@ function statusCopy(status: PantryToolsStatus) {
   switch (status.state) {
     case "ready":
       return {
-        label: "Agent connected",
-        message: `${status.total} tools registered. Your kitchen is stored in this browser, not on a server.`,
+        label: "AI assistant ready",
+        message:
+          "Ask it to check your food, suggest a meal, or update your grocery list.",
         tone: "ready" as const,
       };
     case "unavailable":
       return {
-        label: "No agent here",
+        label: "Connect an AI assistant",
         message:
-          "This browser cannot talk to tools. Everything still works by hand.",
+          "PantryOS works on its own. Use a WebMCP-compatible AI browser when you want help planning or updating your kitchen.",
         tone: "muted" as const,
       };
     case "error": {
@@ -27,8 +28,8 @@ function statusCopy(status: PantryToolsStatus) {
     }
     case "registering":
       return {
-        label: "Connecting agent",
-        message: `Registering ${status.total} kitchen tools…`,
+        label: "Connecting your AI assistant",
+        message: "Getting your kitchen ready for AI help…",
         tone: "muted" as const,
       };
   }
@@ -53,6 +54,27 @@ const TONE_CLASS = {
   },
 } as const;
 
+const FRIENDLY_ACTION = {
+  get_inventory: "Checked your kitchen",
+  get_expiring_items: "Checked what to use soon",
+  add_inventory_item: "Added food to your kitchen",
+  consume_inventory_item: "Updated an amount",
+  remove_inventory_item: "Removed food from your kitchen",
+  find_recipes: "Looked for a meal",
+  get_recipe: "Opened a recipe",
+  add_recipe: "Saved a recipe",
+  add_grocery_item: "Added a grocery item",
+  add_recipe_to_grocery_list: "Planned shopping for a meal",
+  get_grocery_list: "Checked your grocery list",
+} as const;
+
+function friendlyAction(toolName: string) {
+  return (
+    FRIENDLY_ACTION[toolName as keyof typeof FRIENDLY_ACTION] ??
+    "Helped with your kitchen"
+  );
+}
+
 const STATUS_CLASS = {
   cancelled: "text-ink-faint",
   declined: "text-ink-faint",
@@ -76,10 +98,7 @@ export function AgentActivityPanel({ status }: { status: PantryToolsStatus }) {
         className={`border-t-[3px] px-[18px] py-4 ${tone.section}`}
       >
         <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className={`size-[7px] rounded-full ${tone.dot}`}
-          />
+          <span aria-hidden="true" className={`size-[7px] ${tone.dot}`} />
           <h2
             className={`text-xs font-semibold tracking-[0.14em] uppercase ${tone.label}`}
           >
@@ -89,13 +108,32 @@ export function AgentActivityPanel({ status }: { status: PantryToolsStatus }) {
         <p className="mt-2.5 text-[13px] leading-[21px] text-ink-muted">
           {copy.message}
         </p>
+        {status.state === "unavailable" ? (
+          <GuidedDisclosure label="How to connect — 5 steps">
+            <ol className="list-decimal space-y-2 pl-4">
+              <li>
+                Open PantryOS in an AI browser that supports website tools.
+              </li>
+              <li>
+                In a Chrome WebMCP testing build, enable WebMCP testing and
+                reload this page.
+              </li>
+              <li>Keep PantryOS open while you start your AI conversation.</li>
+              <li>Ask something simple, such as “What should I use first?”</li>
+              <li>
+                Review the result here. PantryOS will ask before removing food.
+              </li>
+            </ol>
+          </GuidedDisclosure>
+        ) : null}
       </section>
 
       <section className="mt-9">
-        <SectionHeading>What it just did</SectionHeading>
+        <SectionHeading>Recent AI help</SectionHeading>
         {entries.length === 0 ? (
           <p className="border-b border-rule-faint py-4 text-[13px] leading-5 text-ink-faint">
-            Agent tool calls will appear here.
+            When an AI helps with this kitchen, its recent actions will appear
+            here.
           </p>
         ) : (
           <ol aria-live="polite">
@@ -109,14 +147,10 @@ export function AgentActivityPanel({ status }: { status: PantryToolsStatus }) {
                 key={entry.id}
               >
                 <p
-                  className={`font-mono text-xs ${STATUS_CLASS[entry.status]}`}
+                  className={`text-sm font-medium ${STATUS_CLASS[entry.status]}`}
                 >
-                  {entry.toolName}
-                  {entry.status === "running"
-                    ? " · working"
-                    : entry.durationMs === undefined
-                      ? ""
-                      : ` · ${entry.durationMs}ms`}
+                  {friendlyAction(entry.toolName)}
+                  {entry.status === "running" ? " · working" : ""}
                 </p>
                 <p
                   className={`mt-1 text-[13px] leading-5 ${

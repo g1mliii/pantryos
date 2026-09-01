@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { RecipeForm } from "../components/recipes/RecipeForm";
 import { RecipeResult } from "../components/recipes/RecipeResult";
-import { FieldCaption, Select, TextField, TickBox } from "../components/ui";
-import { RECIPES } from "../data/recipes";
+import {
+  Button,
+  FieldCaption,
+  Select,
+  TextField,
+  TickBox,
+} from "../components/ui";
+import { getAllRecipes } from "../data/recipes";
 import { findRecipes } from "../domain/recipe-matching";
 import { capitalize, spellNumber } from "../domain/number-words";
 import { useKitchenStore } from "../stores/kitchen-store";
@@ -25,15 +33,20 @@ const MISSING_OPTIONS = [
 
 export function RecipesPage() {
   const inventory = useKitchenStore((state) => state.inventory);
+  const customRecipes = useKitchenStore((state) => state.customRecipes);
+  const addCustomRecipe = useKitchenStore((state) => state.addCustomRecipe);
+  const navigate = useNavigate();
   const today = useToday();
+  const [addingRecipe, setAddingRecipe] = useState(false);
   const [query, setQuery] = useState("");
   const [maxMinutes, setMaxMinutes] = useState("30");
   const [maxMissing, setMaxMissing] = useState("2");
   const [prioritizeExpiring, setPrioritizeExpiring] = useState(true);
+  const recipes = useMemo(() => getAllRecipes(customRecipes), [customRecipes]);
   const matches = useMemo(
     () =>
       findRecipes(
-        RECIPES,
+        recipes,
         inventory,
         {
           query: query || undefined,
@@ -44,23 +57,54 @@ export function RecipesPage() {
         },
         today,
       ),
-    [inventory, maxMinutes, maxMissing, prioritizeExpiring, query, today],
+    [
+      inventory,
+      maxMinutes,
+      maxMissing,
+      prioritizeExpiring,
+      query,
+      recipes,
+      today,
+    ],
   );
   const resultEyebrow =
     matches.results.length < matches.totalMatches
       ? `${capitalize(spellNumber(matches.results.length))} shown of ${spellNumber(matches.totalMatches)} matches`
-      : `${capitalize(spellNumber(matches.totalMatches))} of ${spellNumber(RECIPES.length)}`;
+      : `${capitalize(spellNumber(matches.totalMatches))} of ${spellNumber(recipes.length)}`;
 
   return (
     <>
-      <p className="label-caps mb-[18px] text-copper">{resultEyebrow}</p>
-      <h1 className="font-serif text-[52px] leading-none font-light tracking-[-0.015em]">
-        What you could make
-      </h1>
+      <div className="flex flex-wrap items-end justify-between gap-7">
+        <div>
+          <p className="label-caps mb-[18px] text-copper">{resultEyebrow}</p>
+          <h1 className="font-serif text-[52px] leading-none font-light tracking-[-0.015em]">
+            Find your next meal
+          </h1>
+          <p className="mt-4 max-w-[620px] text-base leading-7 text-ink-muted">
+            Start with what you have, use food before it expires, or save a
+            recipe you already love—with a photo, clear timings, ingredient
+            sections, and cook’s notes.
+          </p>
+        </div>
+        {!addingRecipe ? (
+          <Button onClick={() => setAddingRecipe(true)}>Add a recipe</Button>
+        ) : null}
+      </div>
+
+      {addingRecipe ? (
+        <RecipeForm
+          onCancel={() => setAddingRecipe(false)}
+          onSave={(draft) => {
+            const recipe = addCustomRecipe(draft);
+            navigate(`/recipes/${recipe.id}`);
+            return recipe;
+          }}
+        />
+      ) : null}
 
       <section
         aria-label="Recipe filters"
-        className="mt-8 border-y border-rule py-5"
+        className="mt-10 border-y border-rule py-5"
       >
         <div className="grid items-end gap-5 md:grid-cols-[1fr_170px_180px]">
           <TextField
