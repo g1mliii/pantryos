@@ -34,6 +34,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-      - name: Explain skipped deployment
+      # A skipped deploy step still leaves the job green, which once reported
+      # a successful "Deploy" for a push that published nothing. Fail instead.
+      - name: Fail when deployment credentials are missing
         if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == ''
-        run: echo "Cloudflare deployment skipped because repository secrets are not configured."
+        run: |
+          echo "::error::Deployment did not run. Set the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets."
+          exit 1
