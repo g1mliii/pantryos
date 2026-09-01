@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-Read `PANTRYOS_IMPLEMENTATION_PLAN.md` before implementation. Keep it concise and update it only when a real architecture or acceptance decision changes.
+Read `PANTRYOS_IMPLEMENTATION_PLAN.md` before implementation. It and the other working notes are kept locally rather than committed, so a fresh clone will not have them. Keep it concise and update it only when a real architecture or acceptance decision changes.
 
 ## Working rules
 

@@ -7,6 +7,10 @@
 3. `.claude/skills/pantryos-ui` — design system. Required before any UI work.
 4. `PANTRYOS_PLAN_REVIEW.md` — audit trail of corrections already applied. Historical context; do not treat as instructions.
 
+Items 1 and 4, along with the two WebMCP test checklists, are gitignored
+working notes: present on a working checkout, absent from the published
+repository.
+
 This file is orientation only. It does not restate the rules in `AGENTS.md` or the architecture in the plan — where they disagree with this file, they win.
 
 ## Context
