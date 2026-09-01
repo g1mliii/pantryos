@@ -13,9 +13,9 @@ function statusCopy(status: PantryToolsStatus) {
       };
     case "unavailable":
       return {
-        label: "Connect an AI assistant",
+        label: "Connect an AI agent",
         message:
-          "PantryOS works on its own. Use a WebMCP-compatible AI browser when you want help planning or updating your kitchen.",
+          "PantryOS works on its own. Open it in an AI agent desktop application with a WebMCP-capable built-in browser; its site tools are discovered automatically.",
         tone: "muted" as const,
       };
     case "error": {
@@ -111,21 +111,33 @@ export function AgentActivityPanel({ status }: { status: PantryToolsStatus }) {
           {copy.message}
         </p>
         {status.state === "unavailable" ? (
-          <GuidedDisclosure label="How to connect — 5 steps">
+          <GuidedDisclosure label="Connect in 3 steps">
             <ol className="list-decimal space-y-2 pl-4">
               <li>
-                Open PantryOS in an AI browser that supports website tools.
+                In your AI agent desktop application, start a chat and say:
+                <span className="mt-1 block font-serif italic text-ink-soft">
+                  “Open https://pantryos.pressplay-subai.workers.dev in the
+                  built-in browser and use its site tools.”
+                </span>
               </li>
               <li>
-                In a Chrome WebMCP testing build, enable WebMCP testing and
-                reload this page.
+                Keep the PantryOS tab open and ask: “What should I use first?”
               </li>
-              <li>Keep PantryOS open while you start your AI conversation.</li>
-              <li>Ask something simple, such as “What should I use first?”</li>
               <li>
-                Review the result here. PantryOS will ask before removing food.
+                Approve website access if asked, then review the result here.
+                PantryOS asks again before deleting food or a saved recipe.
               </li>
             </ol>
+            <p className="mt-3 text-ink-faint">
+              Site-tool support varies by application and model. If PantryOS
+              stays disconnected, update the desktop application and check its
+              browser or site-tool permissions.
+            </p>
+            <p className="mt-3 text-ink-faint">
+              Testing in Chrome? Enable chrome://flags/#enable-webmcp-testing,
+              relaunch Chrome, and use a WebMCP-capable agent or the Model
+              Context Tool Inspector.
+            </p>
           </GuidedDisclosure>
         ) : null}
       </section>

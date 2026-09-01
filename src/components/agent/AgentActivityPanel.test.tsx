@@ -65,8 +65,18 @@ describe("AgentActivityPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Connect an AI assistant")).toBeTruthy();
+    expect(screen.getByText("Connect an AI agent")).toBeTruthy();
     expect(screen.getByText(/PantryOS works on its own/i)).toBeTruthy();
-    expect(screen.getByText("How to connect — 5 steps")).toBeTruthy();
+    expect(
+      screen.getByText(
+        /^PantryOS works on its own\. Open it in an AI agent desktop application/i,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Connect in 3 steps")).toBeTruthy();
+    expect(
+      screen.getByText(/pantryos\.pressplay-subai\.workers\.dev/i),
+    ).toBeTruthy();
+    expect(screen.getByText(/Site-tool support varies/i)).toBeTruthy();
+    expect(screen.getByText(/enable-webmcp-testing/i)).toBeTruthy();
   });
 });
