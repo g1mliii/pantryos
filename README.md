@@ -2,70 +2,113 @@
 
 [![CI](https://github.com/g1mliii/pantryos/actions/workflows/ci.yml/badge.svg)](https://github.com/g1mliii/pantryos/actions/workflows/ci.yml)
 
-PantryOS is a local-first kitchen inventory and recipe demo for the WebMCP Challenge. The human UI and WebMCP tools will operate the same browser-resident state through shared domain actions.
+A local-first kitchen app where you and a browser agent work on the same data. Inventory, expiry dates, recipes, and the grocery list are all in `localStorage`, and WebMCP exposes them to an agent as real tools instead of something to click through.
 
-**[Open the live app](https://pantryos.pressplay-subai.workers.dev)**
+**[Open PantryOS](https://pantryos.pressplay-subai.workers.dev)**
 
-> Current status: Phases 0 through 3 are implemented and deployed — inventory and expiry, recipe matching, groceries, and ten WebMCP tools backed by the same domain actions as the UI.
+You usually know there's food in the fridge. What you don't know is what's about to go off, or what you can cook with it tonight without another shop. PantryOS keeps track of that, ranks recipes by what you already have and what needs using first, and puts only the genuinely missing items on the list.
 
-## Why WebMCP fits
+## Try it in 60 seconds
 
-PantryOS has no account, backend, or cloud database for a server-side integration to query. WebMCP gives a browser-aware agent a structured interface to the local application state instead of relying on brittle UI actuation.
+Open the live app in ChatGPT's in-app browser (it speaks WebMCP) and hit **Start demo over** for a clean sample kitchen. Then ask:
 
-Kitchen data is stored in `localStorage`. PantryOS itself does not upload it, but tool inputs and results may be processed by the browser agent or its AI provider when the user invokes a tool.
+1. "Find dinner under 30 minutes that uses what expires first and needs at most two new ingredients."
+2. "Show me what I need for the chicken saag."
+3. "Add whatever I'm missing to groceries."
+4. "I used 400 grams of the chicken."
+5. "The spinach went bad, throw it out."
 
-Together, a person and their agent can inspect expiring food, find recipes that use it, add only missing ingredients to groceries, update quantities, and confirm destructive removal while both remain synchronized with the visible app.
+You should get Chicken Saag, then ginger and fresh tomato added once, then chicken dropping from 600 g to 200 g. The last one won't go through until you approve it on screen. Every call shows up in **Recent AI help**, and the Kitchen and Groceries screens update as it happens.
+
+There's also a creation flow: paste or attach a recipe in the conversation and ask the agent to save it. It calls `add_recipe`, and from then on that recipe behaves like any other — it shows up in search, gets matched against your inventory, scales, converts units, and feeds grocery planning. Photos are a browser upload only; they never go back through a tool result.
+
+## Why WebMCP
+
+The kitchen state is personal, changes constantly, and already lives in the page. Doing this the usual way would mean accounts, a database, and an API to put in front of it. WebMCP skips all that: the agent calls validated operations against the state that's already in the browser, so there's no scraping and no second copy of the data to keep in sync.
+
+```text
+Human interface ─┐
+                 ├─> shared domain actions ─> Zustand ─> localStorage
+WebMCP tools ────┘
+```
+
+There's no account, backend, or cloud database. PantryOS doesn't upload anything itself, but once you invoke a tool, its inputs and results go through whatever agent or AI provider you're using.
+
+## How the two sides share state
+
+- You can add, edit, consume, or bin inventory; save recipes with photos; scale servings; switch units; manage groceries.
+- The agent can read inventory and expiry, find and read recipes, save recipes, consume or add inventory, and plan groceries.
+- Both go through the same domain actions, so neither keeps its own copy of the kitchen.
+- Throwing something out always opens the normal confirmation dialog. Declining it, cancelling, navigating away, or having the item vanish underneath all leave inventory alone.
+- The activity rail shows recent tool runs without storing prompt text or secrets.
+
+## Tools
+
+| Capability                | Tools                                                                   |
+| ------------------------- | ----------------------------------------------------------------------- |
+| Read the kitchen          | `get_inventory`, `get_expiring_items`                                   |
+| Change inventory          | `add_inventory_item`, `consume_inventory_item`, `remove_inventory_item` |
+| Discover and save recipes | `find_recipes`, `get_recipe`, `add_recipe`                              |
+| Plan shopping             | `get_grocery_list`, `add_grocery_item`, `add_recipe_to_grocery_list`    |
+
+All eleven of them:
+
+- register only after persisted state has hydrated;
+- prefer `document.modelContext`, with one isolated adapter for the deprecated navigator surface;
+- validate input with Zod and publish a matching closed JSON Schema;
+- read current Zustand state when they run, not when they were registered;
+- return structured results for both success and failure;
+- clean up on abort and fail closed around destructive confirmation;
+- flag anything that could contain user-authored text as untrusted.
+
+## What's in it
+
+- Inventory across fridge, freezer, and pantry, with expiry compared by calendar day so "expires tomorrow" doesn't flip mid-session.
+- Recipe ranking from coverage, expiry urgency, cooking time, and how much is missing. Same inputs, same order, every time.
+- Saved recipes stored alongside the built-in ones, with timings, ingredient and method sections, step notes, and optional compressed photos.
+- Serving scaling, plus US-to-metric mass and volume conversion.
+- Grocery suggestions that tell you which expiring ingredients a meal uses, and add only the missing non-staples without duplicating what's already on the list.
+- A fixed first-run dataset and an explicit reset, so a demo can be run twice and behave the same.
+- Normal browsing and kitchen management still work when WebMCP isn't available.
 
 ## Stack
 
-- Vite, React, strict TypeScript, React Router
-- Tailwind CSS
-- Zustand and `localStorage`
-- Zod and date-fns
-- WebMCP (`document.modelContext` first)
-- Vitest and Testing Library
-- Cloudflare Workers Static Assets
+Vite, React, TypeScript (strict), React Router, Tailwind CSS, Zustand + `localStorage`, Zod, date-fns, WebMCP, Vitest, Testing Library, Cloudflare Workers Static Assets.
 
-## Local development
+## Running it
 
-Requirements: Node 24 and npm.
+Needs Node 24 and npm.
 
 ```bash
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-Open the URL printed by Vite. The tool surface is described in the [implementation plan](./PANTRYOS_IMPLEMENTATION_PLAN.md).
+Open the URL Vite prints. It's client-only — no account, database, env file, or API key.
 
-## WebMCP check
+## Inspecting the tools
 
-PantryOS registers ten tools over `document.modelContext`; the legacy `navigator.modelContext` path exists only inside one compatibility adapter. Browsers without WebMCP continue to render and navigate normally.
+ChatGPT's in-app browser supports WebMCP directly. On a recent Chrome:
 
-For a compatible Chrome build:
+1. Open `chrome://flags/#enable-webmcp-testing`, turn it on, relaunch.
+2. Start the dev server and open the localhost URL.
+3. Go to `/debug`, pick a tool, run it. That page uses `document.modelContext.getTools()` and `executeTool()` against the same registered tools as everything else.
+4. Do the final pass against the deployed HTTPS origin, not localhost.
 
-1. Open `chrome://flags/#enable-webmcp-testing`, enable WebMCP testing, and relaunch Chrome.
-2. Run `npm run dev -- --host 127.0.0.1`, then open the printed localhost URL.
-3. Open `/debug`, pick a tool, and run it. The page calls `document.modelContext.getTools()` and `executeTool()`, so a run there exercises the adapter that reconciles the current Chrome JSON-string and in-app-browser object input forms. The result line names the path that ran; browsers with no page API fall back to the registered callback.
-4. Repeat the check on the exact, locked HTTPS deployment hostname after Cloudflare credentials and that hostname are configured.
+The old `navigator.modelContextTesting` helper isn't used. `/debug` is dev-only and redirects to `/` in production builds.
 
-The former `navigator.modelContextTesting` helper is not used; current Chromium exposes inspection and execution through the standard `document.modelContext` API. `/debug` is development-only and redirects to `/` in production builds.
-
-## Verification
+## Tests
 
 ```bash
 npm run verify
 npm run deploy:dry
 ```
 
-`verify` checks formatting, lint, TypeScript, tests, and the production build. The dry deployment command validates the Cloudflare asset bundle without publishing it.
+`verify` runs Prettier, ESLint, `tsc`, the test suite (31 files, 136 tests), and a production build. `deploy:dry` checks the Cloudflare asset bundle without publishing.
 
-## Deployment
+## Deploying
 
-The production app is deployed through Cloudflare Workers Static Assets at:
-
-- <https://pantryos.pressplay-subai.workers.dev>
-
-Before publishing, run:
+Cloudflare Workers Static Assets, at <https://pantryos.pressplay-subai.workers.dev>.
 
 ```bash
 npm run verify
@@ -73,14 +116,12 @@ npm run deploy:dry
 npm run deploy
 ```
 
-Pushes to `main` run CI. The deployment workflow can also publish from GitHub when `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are configured as repository secrets.
+Pushes to `main` run CI. The deploy workflow can publish from GitHub too, if `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are set as repository secrets.
 
-## Project documents
+## Also here
 
-- [Implementation plan](./PANTRYOS_IMPLEMENTATION_PLAN.md)
-- [Plan audit](./PANTRYOS_PLAN_REVIEW.md)
-- [Repository instructions](./AGENTS.md)
 - [Submission copy and demo script](./SUBMISSION.md)
+- [Repository conventions](./AGENTS.md)
 
 ## License
 
