@@ -55,7 +55,7 @@ afterEach(() => {
 });
 
 describe("PantryOS WebMCP tool contracts", () => {
-  it("publishes exactly eleven annotated, closed object schemas", () => {
+  it("publishes exactly thirteen annotated, closed object schemas", () => {
     const { tools } = makeHarness();
 
     expect(tools.map((tool) => tool.name)).toEqual([
@@ -67,6 +67,8 @@ describe("PantryOS WebMCP tool contracts", () => {
       "find_recipes",
       "get_recipe",
       "add_recipe",
+      "update_recipe",
+      "remove_recipe",
       "add_grocery_item",
       "add_recipe_to_grocery_list",
       "get_grocery_list",
@@ -104,6 +106,42 @@ describe("PantryOS WebMCP tool contracts", () => {
     expectEveryPropertyDescribed(
       tools.find((tool) => tool.name === "add_recipe")?.inputSchema,
     );
+    expectEveryPropertyDescribed(
+      tools.find((tool) => tool.name === "update_recipe")?.inputSchema,
+    );
+
+    const updateSchema = tools.find((tool) => tool.name === "update_recipe")
+      ?.inputSchema as {
+      properties: Record<string, Record<string, unknown>>;
+      required: string[];
+    };
+    expect(updateSchema.required).toEqual(
+      expect.arrayContaining([
+        "recipeId",
+        "title",
+        "description",
+        "servings",
+        "timing",
+        "ingredients",
+        "steps",
+      ]),
+    );
+    expect(updateSchema.properties.recipeId).toMatchObject({ pattern: "\\S" });
+    expect(updateSchema.properties.description).toMatchObject({
+      pattern: "\\S",
+    });
+    expect(updateSchema.properties.timing).toMatchObject({
+      anyOf: expect.arrayContaining([
+        expect.objectContaining({ required: ["totalMinutes"] }),
+        expect.objectContaining({ required: ["prepMinutes", "cookMinutes"] }),
+      ]),
+    });
+    expect(
+      tools.find((tool) => tool.name === "remove_recipe")?.inputSchema,
+    ).toMatchObject({
+      properties: { recipeId: { pattern: "\\S" } },
+      required: ["recipeId"],
+    });
   });
 
   it("rejects unknown or incomplete input before mutation", async () => {

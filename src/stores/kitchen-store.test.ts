@@ -125,6 +125,109 @@ describe("kitchen persistence and initialization", () => {
   });
 });
 
+describe("saved recipe changes", () => {
+  it("edits with a stable id and removes without deleting planned groceries", () => {
+    const store = createKitchenStore({ now: () => AT_NINE });
+    const saved = store.getState().addCustomRecipe({
+      title: "Tomato Toast",
+      description: "A quick lunch.",
+      servings: 1,
+      totalMinutes: 8,
+      ingredients: [
+        { name: "fresh tomato", quantity: 2, displayUnit: "count" },
+      ],
+      steps: [{ instruction: "Toast and top." }],
+    });
+    store.getState().addRecipeToGroceries(saved.id);
+
+    const updated = store.getState().editCustomRecipe(saved.id, {
+      title: "Herby Tomato Toast",
+      description: "A greener quick lunch.",
+      servings: 2,
+      totalMinutes: 10,
+      ingredients: [{ name: "fresh basil" }],
+      steps: [{ instruction: "Toast, top, and finish with basil." }],
+    });
+    expect(updated).toMatchObject({
+      id: saved.id,
+      title: "Herby Tomato Toast",
+      servings: 2,
+    });
+
+    expect(store.getState().removeCustomRecipe(saved.id)).toEqual(updated);
+    expect(store.getState().customRecipes).toEqual([]);
+    expect(store.getState().groceries).toMatchObject([
+      { name: "fresh tomato" },
+    ]);
+    expect(store.getState().groceries[0]?.sourceRecipeId).toBeUndefined();
+    expect(() =>
+      store.getState().editCustomRecipe("chicken-saag", {
+        title: "Changed",
+        description: "Not allowed.",
+        servings: 1,
+        totalMinutes: 5,
+        ingredients: [{ name: "spinach" }],
+        steps: [{ instruction: "Cook." }],
+      }),
+    ).toThrow("No saved recipe");
+    expect(() => store.getState().removeCustomRecipe("chicken-saag")).toThrow(
+      "No saved recipe",
+    );
+  });
+
+  it("persists saved recipe edits and deletions across reloads", () => {
+    const storage = memoryStorage();
+    const makeStore = () => createKitchenStore({ now: () => AT_NINE, storage });
+    const firstLoad = makeStore();
+    const photo = {
+      dataUrl: "data:image/webp;base64,AAAA",
+      alt: "Tomato toast",
+    };
+    const saved = firstLoad.getState().addCustomRecipe({
+      title: "Tomato Toast",
+      description: "A quick lunch.",
+      servings: 1,
+      totalMinutes: 8,
+      photo,
+      ingredients: [{ name: "fresh tomato" }],
+      steps: [{ instruction: "Toast and top." }],
+    });
+    firstLoad.getState().addRecipeToGroceries(saved.id);
+    firstLoad.getState().editCustomRecipe(saved.id, {
+      title: "Herby Tomato Toast",
+      description: "A greener quick lunch.",
+      servings: 2,
+      totalMinutes: 10,
+      photo,
+      ingredients: [{ name: "fresh basil" }],
+      steps: [{ instruction: "Toast, top, and finish with basil." }],
+    });
+
+    const afterEditReload = makeStore();
+    expect(afterEditReload.getState().customRecipes).toMatchObject([
+      {
+        id: saved.id,
+        title: "Herby Tomato Toast",
+        photo,
+      },
+    ]);
+    expect(afterEditReload.getState().groceries[0]).toMatchObject({
+      name: "fresh tomato",
+      sourceRecipeId: saved.id,
+    });
+
+    afterEditReload.getState().removeCustomRecipe(saved.id);
+    const afterDeleteReload = makeStore();
+    expect(afterDeleteReload.getState().customRecipes).toEqual([]);
+    expect(afterDeleteReload.getState().groceries).toMatchObject([
+      { name: "fresh tomato" },
+    ]);
+    expect(
+      afterDeleteReload.getState().groceries[0]?.sourceRecipeId,
+    ).toBeUndefined();
+  });
+});
+
 describe("kitchen recovery from damaged storage", () => {
   it("migrates old string recipe steps into the rich step shape", () => {
     const store = createKitchenStore({
@@ -190,6 +293,31 @@ describe("kitchen recovery from damaged storage", () => {
       }),
     ).toThrow("2 MB storage limit");
     expect(store.getState().customRecipes).toHaveLength(5);
+
+    const withoutPhoto = store.getState().addCustomRecipe({
+      title: "Text-only recipe",
+      description: "This recipe still fits without a photo.",
+      servings: 1,
+      totalMinutes: 5,
+      ingredients: [{ name: "bread" }],
+      steps: [{ instruction: "Serve." }],
+    });
+    expect(() =>
+      store.getState().editCustomRecipe(withoutPhoto.id, {
+        title: "Text-only recipe",
+        description: "Adding this photo would exceed the browser budget.",
+        servings: 1,
+        totalMinutes: 5,
+        photo,
+        ingredients: [{ name: "bread" }],
+        steps: [{ instruction: "Serve." }],
+      }),
+    ).toThrow("2 MB storage limit");
+    expect(
+      store
+        .getState()
+        .customRecipes.find((recipe) => recipe.id === withoutPhoto.id)?.photo,
+    ).toBeUndefined();
   });
 
   it("keeps the readable rows when one stored item is unusable", () => {

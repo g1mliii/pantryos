@@ -3,6 +3,8 @@ import { ZodError } from "zod";
 import { Button, TextArea, TextField } from "../ui";
 import { RecipePhotoField } from "./RecipePhotoField";
 import {
+  formatRecipeIngredientsForForm,
+  formatRecipeStepsForForm,
   parseRecipeIngredients,
   parseRecipeSteps,
 } from "../../domain/custom-recipes";
@@ -11,6 +13,7 @@ import type { CustomRecipeDraft, Recipe } from "../../schemas/recipe";
 interface RecipeFormProps {
   onCancel: () => void;
   onSave: (draft: CustomRecipeDraft) => Recipe;
+  recipe?: Recipe;
 }
 
 // Zod reports the failing leaf (["ingredients", 2, "name"]), so name the row
@@ -34,26 +37,48 @@ function readableError(caught: unknown) {
     : "That recipe could not be saved. Check the details and try again.";
 }
 
-export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [servings, setServings] = useState("4");
-  const [prepMinutes, setPrepMinutes] = useState("10");
-  const [cookMinutes, setCookMinutes] = useState("20");
-  const [photo, setPhoto] = useState<string>();
-  const [ingredients, setIngredients] = useState("");
-  const [steps, setSteps] = useState("");
+export function RecipeForm({ onCancel, onSave, recipe }: RecipeFormProps) {
+  const usesTotalTiming =
+    recipe !== undefined &&
+    recipe.prepMinutes === undefined &&
+    recipe.cookMinutes === undefined;
+  const [title, setTitle] = useState(recipe?.title ?? "");
+  const [description, setDescription] = useState(recipe?.description ?? "");
+  const [servings, setServings] = useState(String(recipe?.servings ?? 4));
+  const [totalMinutes, setTotalMinutes] = useState(
+    String(recipe?.totalMinutes ?? 20),
+  );
+  const [prepMinutes, setPrepMinutes] = useState(
+    recipe ? String(recipe.prepMinutes ?? 0) : "10",
+  );
+  const [cookMinutes, setCookMinutes] = useState(
+    String(recipe?.cookMinutes ?? 20),
+  );
+  const [photo, setPhoto] = useState<string | undefined>(
+    recipe?.photo?.dataUrl,
+  );
+  const [ingredients, setIngredients] = useState(
+    recipe ? formatRecipeIngredientsForForm(recipe) : "",
+  );
+  const [steps, setSteps] = useState(
+    recipe ? formatRecipeStepsForForm(recipe) : "",
+  );
   const [error, setError] = useState<string>();
 
   function submit(event: FormEvent) {
     event.preventDefault();
     try {
+      const timing = usesTotalTiming
+        ? { totalMinutes: Number(totalMinutes) }
+        : {
+            prepMinutes: Number(prepMinutes),
+            cookMinutes: Number(cookMinutes),
+          };
       onSave({
         title,
         description,
         servings: Number(servings),
-        prepMinutes: Number(prepMinutes),
-        cookMinutes: Number(cookMinutes),
+        ...timing,
         ...(photo
           ? { photo: { dataUrl: photo, alt: `${title.trim()} recipe` } }
           : {}),
@@ -92,22 +117,35 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
         <div className="sm:col-span-2">
           <RecipePhotoField onChange={setPhoto} title={title} value={photo} />
         </div>
-        <TextField
-          label="Prep time (minutes)"
-          max="480"
-          min="0"
-          onChange={(event) => setPrepMinutes(event.target.value)}
-          type="number"
-          value={prepMinutes}
-        />
-        <TextField
-          label="Cooking time (minutes)"
-          max="480"
-          min="0"
-          onChange={(event) => setCookMinutes(event.target.value)}
-          type="number"
-          value={cookMinutes}
-        />
+        {usesTotalTiming ? (
+          <TextField
+            label="Total time (minutes)"
+            max="960"
+            min="1"
+            onChange={(event) => setTotalMinutes(event.target.value)}
+            type="number"
+            value={totalMinutes}
+          />
+        ) : (
+          <>
+            <TextField
+              label="Prep time (minutes)"
+              max="480"
+              min="0"
+              onChange={(event) => setPrepMinutes(event.target.value)}
+              type="number"
+              value={prepMinutes}
+            />
+            <TextField
+              label="Cooking time (minutes)"
+              max="480"
+              min="0"
+              onChange={(event) => setCookMinutes(event.target.value)}
+              type="number"
+              value={cookMinutes}
+            />
+          </>
+        )}
         <TextField
           label="Serves"
           max="24"
@@ -153,7 +191,7 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
         </p>
       ) : null}
       <div className="mt-6 flex items-center gap-5">
-        <Button type="submit">Save recipe</Button>
+        <Button type="submit">{recipe ? "Save changes" : "Save recipe"}</Button>
         <Button onClick={onCancel} variant="quiet">
           Cancel
         </Button>

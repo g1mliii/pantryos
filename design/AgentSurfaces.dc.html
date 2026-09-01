@@ -36,7 +36,7 @@
           <span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>
           <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #8a4d2c;">Agent connected</span>
         </div>
-        <p style="margin: 12px 0 0; font-size: 14px; line-height: 24px; color: #6b5f56;">Eleven tools registered. Your kitchen is stored in this browser, not on a server.</p>
+        <p style="margin: 12px 0 0; font-size: 14px; line-height: 24px; color: #6b5f56;">Thirteen tools registered. Your kitchen is stored in this browser, not on a server.</p>
       </div>
       <div>
         <div style="display: flex; align-items: center; gap: 9px;">
@@ -51,15 +51,15 @@
           <span style="width: 6px; height: 6px; background: #a83e28; display: inline-block;"></span>
           <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: #a83e28;">Two tools did not load</span>
         </div>
-        <p style="margin: 12px 0 0; font-size: 14px; line-height: 24px; color: #6b5f56;">Nine of eleven registered. Reload to try the rest again.</p>
+        <p style="margin: 12px 0 0; font-size: 14px; line-height: 24px; color: #6b5f56;">Eleven of thirteen registered. Reload to try the rest again.</p>
       </div>
     </div>
 
     <div style="height: 68px;"></div>
 
-    <p style="margin: 0 0 2px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56; display: flex; align-items: center; gap: 9px;"><span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>Before anything is thrown away</p>
+    <p style="margin: 0 0 2px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56; display: flex; align-items: center; gap: 9px;"><span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>Before anything is removed</p>
     <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #dedad4;"></span></div>
-    <p style="margin: 18px 0 0; font-size: 15px; line-height: 26px; color: #6b5f56; max-width: 620px;">The agent proposes, you decide. Nothing is removed until this is answered — and declining is a normal outcome, not an error.</p>
+    <p style="margin: 18px 0 0; font-size: 15px; line-height: 26px; color: #6b5f56; max-width: 620px;">The agent proposes, you decide. Food and saved recipes stay put until this is answered — and declining is a normal outcome, not an error.</p>
 
     <div style="background: #ebe6df; padding: 60px; margin-top: 26px;">
       <div style="width: 470px; margin: 0 auto; background: #ffffff; padding: 34px 36px; box-shadow: 0 18px 44px rgba(70, 52, 38, 0.16);">
@@ -104,7 +104,7 @@
 
     <div style="height: 68px;"></div>
 
-    <p style="margin: 0 0 2px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56; display: flex; align-items: center; gap: 9px;"><span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>The eleven tools</p>
+    <p style="margin: 0 0 2px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #6b5f56; display: flex; align-items: center; gap: 9px;"><span style="width: 7px; height: 7px; background: #a6603a; display: inline-block;"></span>The thirteen tools</p>
     <div style="display: flex;"><span style="width: 62px; height: 2px; background: #a6603a;"></span><span style="flex-grow: 1; height: 2px; background: #dedad4;"></span></div>
     <p style="margin: 18px 0 0; font-size: 15px; line-height: 26px; color: #6b5f56; max-width: 620px;">The dev-only view at <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px;">/debug</span> — every registered tool, its annotations, and a box to call it by hand without an agent.</p>
 
@@ -133,6 +133,14 @@
       <div style="padding: 15px 0; border-bottom: 1px solid #e8e4de;">
         <p style="margin: 0 0 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #8a4d2c;">add_recipe</p>
         <p style="margin: 0; font-size: 12px; color: #9a8d82;">writes · may echo your words</p>
+      </div>
+      <div style="padding: 15px 0; border-bottom: 1px solid #e8e4de;">
+        <p style="margin: 0 0 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #8a4d2c;">update_recipe</p>
+        <p style="margin: 0; font-size: 12px; color: #9a8d82;">writes · saved recipes only</p>
+      </div>
+      <div style="padding: 15px 0; border-bottom: 1px solid #e8e4de;">
+        <p style="margin: 0 0 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #a83e28;">remove_recipe</p>
+        <p style="margin: 0; font-size: 12px; color: #a83e28;">writes · always asks you first</p>
       </div>
       <div style="padding: 15px 0; border-bottom: 1px solid #e8e4de;">
         <p style="margin: 0 0 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #8a4d2c;">add_recipe_to_grocery_list</p>

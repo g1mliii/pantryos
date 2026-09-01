@@ -9,7 +9,10 @@ import { z } from "zod";
 import { clearAgentActivity } from "./agent-activity-store";
 import { createDemoInventory } from "../data/demo-kitchen";
 import { getAllRecipes, getRecipeById } from "../data/recipes";
-import { createCustomRecipe } from "../domain/custom-recipes";
+import {
+  createCustomRecipe,
+  updateCustomRecipe,
+} from "../domain/custom-recipes";
 import {
   addGroceryItem,
   addMissingRecipeIngredients,
@@ -76,6 +79,7 @@ export interface KitchenStoreState extends PersistedKitchenState {
   addGrocery: (input: GroceryDraft) => GroceryAddResult;
   addInventory: (input: InventoryDraft) => InventoryItem;
   addCustomRecipe: (input: CustomRecipeDraft) => Recipe;
+  editCustomRecipe: (recipeId: string, input: CustomRecipeDraft) => Recipe;
   addRecipeToGroceries: (
     recipeId: string,
     targetServings?: number,
@@ -88,6 +92,7 @@ export interface KitchenStoreState extends PersistedKitchenState {
   editInventory: (itemId: string, input: InventoryEdit) => InventoryItem;
   initialize: () => void;
   removeInventory: (itemId: string) => InventoryItem;
+  removeCustomRecipe: (recipeId: string) => Recipe;
   removeGrocery: (itemId: string) => void;
   resetDemo: () => void;
   setGroceryChecked: (itemId: string, checked: boolean) => void;
@@ -260,6 +265,58 @@ export function createKitchenStore(options: KitchenStoreOptions = {}) {
               draft,
             );
             set({ customRecipes: [...get().customRecipes, recipe] });
+            return recipe;
+          },
+          editCustomRecipe: (recipeId, input) => {
+            const draft = customRecipeDraftSchema.parse(input);
+            const currentRecipes = get().customRecipes;
+            const index = currentRecipes.findIndex(
+              (recipe) => recipe.id === recipeId,
+            );
+            const currentRecipe = currentRecipes[index];
+            if (!currentRecipe) {
+              throw new Error(`No saved recipe has id "${recipeId}".`);
+            }
+            const photoBytes = currentRecipes.reduce(
+              (total, recipe) =>
+                total +
+                (recipe.id === recipeId
+                  ? 0
+                  : (recipe.photo?.dataUrl.length ?? 0)),
+              draft.photo?.dataUrl.length ?? 0,
+            );
+            if (photoBytes > MAX_RECIPE_PHOTO_STORAGE) {
+              throw new Error(
+                "Recipe photos have reached this browser's 2 MB storage limit.",
+              );
+            }
+            const recipe = updateCustomRecipe(currentRecipe, draft);
+            const customRecipes = [...currentRecipes];
+            customRecipes[index] = recipe;
+            set({ customRecipes });
+            return recipe;
+          },
+          removeCustomRecipe: (recipeId) => {
+            const currentRecipes = get().customRecipes;
+            const recipe = currentRecipes.find(
+              (candidate) => candidate.id === recipeId,
+            );
+            if (!recipe) {
+              throw new Error(`No saved recipe has id "${recipeId}".`);
+            }
+            set({
+              customRecipes: currentRecipes.filter(
+                (candidate) => candidate.id !== recipeId,
+              ),
+              // Shopping decisions remain useful after their source recipe is
+              // deleted, but should no longer point at an id that cannot open.
+              groceries: get().groceries.map((item) => {
+                if (item.sourceRecipeId !== recipeId) return item;
+                const unlinked = { ...item };
+                delete unlinked.sourceRecipeId;
+                return unlinked;
+              }),
+            });
             return recipe;
           },
           addGrocery: (input) => {

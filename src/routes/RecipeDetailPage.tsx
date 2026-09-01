@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { RecipeIngredientList } from "../components/recipes/RecipeIngredientList";
+import { RecipeForm } from "../components/recipes/RecipeForm";
 import { RecipeScaleControls } from "../components/recipes/RecipeScaleControls";
-import { SectionHeading } from "../components/ui";
+import { Button, SectionHeading } from "../components/ui";
 import { getAllRecipes, getRecipeById } from "../data/recipes";
 import { describeGroceryError } from "../domain/groceries";
 import { joinNames } from "../domain/number-words";
@@ -12,18 +13,25 @@ import {
   formatRecipeTiming,
   type RecipeUnitMode,
 } from "../domain/recipe-units";
-import { useKitchenStore } from "../stores/kitchen-store";
+import { requestConfirmation } from "../stores/confirmation-store";
+import { kitchenStore, useKitchenStore } from "../stores/kitchen-store";
 import { useToday } from "../stores/today-store";
 
 export function RecipeDetailPage() {
   const { recipeId } = useParams();
+  const navigate = useNavigate();
   const inventory = useKitchenStore((state) => state.inventory);
   const customRecipes = useKitchenStore((state) => state.customRecipes);
+  const editCustomRecipe = useKitchenStore((state) => state.editCustomRecipe);
+  const removeCustomRecipe = useKitchenStore(
+    (state) => state.removeCustomRecipe,
+  );
   const addRecipeToGroceries = useKitchenStore(
     (state) => state.addRecipeToGroceries,
   );
   const today = useToday();
   const [notice, setNotice] = useState<string>();
+  const [editing, setEditing] = useState(false);
   const [targetServings, setTargetServings] = useState<number>();
   const [unitMode, setUnitMode] = useState<RecipeUnitMode>("original");
   // Neither the recipe nor its inventory match depends on the serving or
@@ -62,6 +70,10 @@ export function RecipeDetailPage() {
 
   // Captured so the handler does not depend on narrowing `recipe`.
   const chosenRecipeId = recipe.id;
+  const chosenRecipe = recipe;
+  const isSavedRecipe = customRecipes.some(
+    (candidate) => candidate.id === chosenRecipeId,
+  );
 
   function addMissing() {
     // A scaled amount can fall outside what a grocery row accepts, and the
@@ -79,14 +91,82 @@ export function RecipeDetailPage() {
     }
   }
 
+  async function deleteSavedRecipe() {
+    const decision = await requestConfirmation({
+      cancelLabel: "Keep recipe",
+      confirmLabel: "Delete recipe",
+      description:
+        "This removes the saved recipe. Grocery items already added from it stay on your list. It cannot be undone.",
+      eyebrow: "Before this recipe is deleted",
+      title: `Delete ${chosenRecipe.title}?`,
+    });
+    if (decision !== "confirmed") return;
+
+    const currentRecipe = kitchenStore
+      .getState()
+      .customRecipes.find((candidate) => candidate.id === chosenRecipeId);
+    if (currentRecipe !== chosenRecipe) {
+      setNotice(
+        "That recipe changed while the confirmation was open. Review it and try again.",
+      );
+      return;
+    }
+    removeCustomRecipe(chosenRecipeId);
+    navigate("/recipes", { replace: true });
+  }
+
+  if (editing) {
+    return (
+      <>
+        <Link
+          className="mb-6 inline-block text-[13px] text-ink-faint hover:text-copper-deep"
+          to={`/recipes/${chosenRecipeId}`}
+          onClick={(event) => {
+            event.preventDefault();
+            setEditing(false);
+          }}
+        >
+          ← Back to recipe
+        </Link>
+        <p className="label-caps mb-[18px] text-copper">Edit saved recipe</p>
+        <h1 className="font-serif text-[52px] leading-none font-light tracking-[-0.015em]">
+          Keep the recipe yours
+        </h1>
+        <RecipeForm
+          onCancel={() => setEditing(false)}
+          onSave={(draft) => {
+            const updated = editCustomRecipe(chosenRecipeId, draft);
+            setEditing(false);
+            setTargetServings(undefined);
+            setNotice(`Saved changes to ${updated.title}.`);
+            return updated;
+          }}
+          recipe={recipe}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      <Link
-        className="mb-6 inline-block text-[13px] text-ink-faint hover:text-copper-deep"
-        to="/recipes"
-      >
-        ← Back to recipes
-      </Link>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-5">
+        <Link
+          className="text-[13px] text-ink-faint hover:text-copper-deep"
+          to="/recipes"
+        >
+          ← Back to recipes
+        </Link>
+        {isSavedRecipe ? (
+          <div className="flex items-center gap-5">
+            <Button onClick={() => setEditing(true)} variant="quiet">
+              Edit recipe
+            </Button>
+            <Button onClick={deleteSavedRecipe} variant="quiet">
+              Delete recipe
+            </Button>
+          </div>
+        ) : null}
+      </div>
       <h1 className="font-serif text-[62px] leading-[66px] font-light tracking-[-0.02em]">
         {recipe.title}
       </h1>

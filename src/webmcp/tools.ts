@@ -201,6 +201,7 @@ const recipeIngredientToolBase = {
     .trim()
     .min(1)
     .max(80)
+    .regex(/\S/, "Name the ingredient section")
     .optional()
     .describe("Optional ingredient group, such as Sauce or To finish."),
 };
@@ -230,12 +231,14 @@ const recipeStepToolSchema = z
       .trim()
       .min(1)
       .max(800)
+      .regex(/\S/, "Write out the direction")
       .describe("One complete recipe direction."),
     section: z
       .string()
       .trim()
       .min(1)
       .max(80)
+      .regex(/\S/, "Name the method section")
       .optional()
       .describe("Optional method group, such as Prepare or Bake."),
     note: z
@@ -243,6 +246,7 @@ const recipeStepToolSchema = z
       .trim()
       .min(1)
       .max(300)
+      .regex(/\S/, "Write out the cook's note")
       .optional()
       .describe("A useful cook's note tied to this step."),
   })
@@ -256,10 +260,26 @@ const recipeTimingToolSchema = z
           .number()
           .int()
           .positive()
-          .max(480)
+          .max(960)
           .describe(
             "Total elapsed minutes when separate prep and cooking times are unavailable.",
           ),
+      })
+      .strict(),
+    z
+      .object({
+        prepMinutes: z
+          .number()
+          .int()
+          .positive()
+          .max(480)
+          .describe("Minutes spent preparing ingredients."),
+        cookMinutes: z
+          .number()
+          .int()
+          .min(0)
+          .max(480)
+          .describe("Minutes spent cooking the recipe."),
       })
       .strict(),
     z
@@ -273,48 +293,63 @@ const recipeTimingToolSchema = z
         cookMinutes: z
           .number()
           .int()
-          .min(0)
+          .positive()
           .max(480)
           .describe("Minutes spent cooking the recipe."),
       })
-      .strict()
-      .refine(
-        (timing) => timing.prepMinutes > 0 || timing.cookMinutes > 0,
-        "Give the recipe some prep or cooking time",
-      ),
+      .strict(),
   ])
   .describe(
     "Use either one total time or separate prep and cooking times; PantryOS derives the total for separate times.",
   );
 
-const addRecipeInput = z
+const recipeToolFields = {
+  title: toolName.describe("The recipe name."),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .regex(/\S/, "Describe the finished recipe")
+    .describe("A concise description of the finished recipe."),
+  servings: z
+    .number()
+    .int()
+    .positive()
+    .max(24)
+    .describe("How many servings the unscaled recipe makes."),
+  timing: recipeTimingToolSchema,
+  ingredients: z
+    .array(recipeIngredientToolSchema)
+    .min(1)
+    .max(40)
+    .describe("The complete ingredient list in recipe order."),
+  steps: z
+    .array(recipeStepToolSchema)
+    .min(1)
+    .max(30)
+    .describe("The complete ordered method."),
+};
+
+const addRecipeInput = z.object(recipeToolFields).strict();
+
+const savedRecipeId = z
+  .string()
+  .min(1)
+  .max(160)
+  .regex(/\S/, "Give the saved recipe id")
+  .describe(
+    "The exact custom recipeId returned by add_recipe or find_recipes.",
+  );
+
+const updateRecipeInput = z
   .object({
-    title: toolName.describe("The recipe name."),
-    description: z
-      .string()
-      .trim()
-      .min(1)
-      .max(500)
-      .describe("A concise description of the finished recipe."),
-    servings: z
-      .number()
-      .int()
-      .positive()
-      .max(24)
-      .describe("How many servings the unscaled recipe makes."),
-    timing: recipeTimingToolSchema,
-    ingredients: z
-      .array(recipeIngredientToolSchema)
-      .min(1)
-      .max(40)
-      .describe("The complete ingredient list in recipe order."),
-    steps: z
-      .array(recipeStepToolSchema)
-      .min(1)
-      .max(30)
-      .describe("The complete ordered method."),
+    recipeId: savedRecipeId,
+    ...recipeToolFields,
   })
   .strict();
+
+const removeRecipeInput = z.object({ recipeId: savedRecipeId }).strict();
 
 const addRecipeToGroceriesInput = z
   .object({
@@ -786,6 +821,120 @@ export function createPantryTools(
           hasPhoto: false,
         });
       }),
+    },
+    {
+      name: "update_recipe",
+      title: "Edit a saved recipe",
+      description:
+        "Use to replace the complete structured content of a user-saved recipe after reading it with get_recipe. Send every recipe field; the recipeId and any browser-added photo stay unchanged. Built-in recipes cannot be edited.",
+      inputSchema: toToolJsonSchema(updateRecipeInput),
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
+      execute: createToolExecutor(
+        "update_recipe",
+        updateRecipeInput,
+        (input) => {
+          const { recipeId: inputRecipeId, timing, ...recipeFields } = input;
+          const recipeId = inputRecipeId.trim();
+          const state = getKitchenState();
+          const existing = state.customRecipes.find(
+            (recipe) => recipe.id === recipeId,
+          );
+          if (!existing) {
+            const builtIn = getRecipeById(
+              recipeId,
+              getAllRecipes(state.customRecipes),
+            );
+            return toolFailure(
+              builtIn
+                ? `${builtIn.title} is built into PantryOS and cannot be edited. Save a new recipe instead.`
+                : `No saved recipe has id "${recipeId}". Call find_recipes for valid ids.`,
+              builtIn ? "recipe_read_only" : "recipe_not_found",
+            );
+          }
+          const recipe = state.editCustomRecipe(recipeId, {
+            ...recipeFields,
+            ...timing,
+            ...(existing.photo ? { photo: existing.photo } : {}),
+          });
+          return toolSuccess(`Updated ${recipe.title}.`, {
+            recipeId: recipe.id,
+            title: recipe.title,
+            servings: recipe.servings,
+            totalMinutes: recipe.totalMinutes,
+            hasPhoto: recipe.photo !== undefined,
+          });
+        },
+      ),
+    },
+    {
+      name: "remove_recipe",
+      title: "Delete a saved recipe with approval",
+      description:
+        "Use only when the user wants a user-saved recipe deleted. Always opens a human confirmation in PantryOS; built-in recipes cannot be deleted, and grocery items already added from the recipe remain on the list.",
+      inputSchema: toToolJsonSchema(removeRecipeInput),
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
+      execute: createToolExecutor(
+        "remove_recipe",
+        removeRecipeInput,
+        async (input, options) => {
+          const recipeId = input.recipeId.trim();
+          const state = getKitchenState();
+          const recipe = state.customRecipes.find(
+            (candidate) => candidate.id === recipeId,
+          );
+          if (!recipe) {
+            const builtIn = getRecipeById(
+              recipeId,
+              getAllRecipes(state.customRecipes),
+            );
+            return toolFailure(
+              builtIn
+                ? `${builtIn.title} is built into PantryOS and cannot be deleted.`
+                : `No saved recipe has id "${recipeId}". Call find_recipes for valid ids.`,
+              builtIn ? "recipe_read_only" : "recipe_not_found",
+            );
+          }
+          const decision = await confirm(
+            {
+              cancelLabel: "Keep recipe",
+              confirmLabel: "Delete recipe",
+              description:
+                "This removes the saved recipe. Grocery items already added from it stay on your list. It cannot be undone.",
+              eyebrow: "Your agent is asking",
+              title: `Delete ${recipe.title}?`,
+            },
+            { signal: options?.signal },
+          );
+          if (decision !== "confirmed") {
+            return toolFailure(
+              decision === "declined"
+                ? `${recipe.title} stayed. Nothing changed.`
+                : `Deletion of ${recipe.title} was cancelled. Nothing changed.`,
+              decision,
+            );
+          }
+          const currentRecipe = getKitchenState().customRecipes.find(
+            (candidate) => candidate.id === recipeId,
+          );
+          if (!currentRecipe) {
+            return toolFailure(
+              `${recipe.title} is no longer saved. Call find_recipes before retrying.`,
+              "recipe_not_found",
+            );
+          }
+          if (currentRecipe !== recipe) {
+            return toolFailure(
+              `${recipe.title} changed while approval was open. Call get_recipe and ask again before deleting it.`,
+              "recipe_changed",
+            );
+          }
+          getKitchenState().removeCustomRecipe(recipeId);
+          return toolSuccess(`Deleted ${recipe.title}.`, {
+            recipeId,
+            removed: true,
+          });
+        },
+      ),
     },
     {
       name: "add_grocery_item",

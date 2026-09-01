@@ -22,6 +22,16 @@ You should get Chicken Saag, then ginger and fresh tomato added once, then chick
 
 There's also a creation flow: paste or attach a recipe in the conversation and ask the agent to save it. It calls `add_recipe`, and from then on that recipe behaves like any other — it shows up in search, gets matched against your inventory, scales, converts units, and feeds grocery planning. Photos are a browser upload only; they never go back through a tool result.
 
+### Try a deeper multi-step request
+
+For a less scripted test, paste or attach any complete recipe, replace the bracketed details below, and ask:
+
+> Save this recipe for **[dish]** for **[number] servings**. Before planning my shopping, check what is already in my kitchen and how soon those ingredients expire. Reuse anything that is still usable, tell me when freshness cannot be determined because an item has no expiry date, and add only the missing required ingredients to my grocery list. Do not add optional ingredients or duplicate anything already listed.
+
+This tests whether the agent can carry context across a real workflow rather than handle one isolated command. In **Recent AI help**, you should see it check the kitchen with `get_inventory`, save the structured recipe with `add_recipe`, and plan only its missing groceries with `add_recipe_to_grocery_list`. Exact ingredients will vary with the recipe and current kitchen state; the important outcome is that usable food is reused, expired food is excluded, optional ingredients stay optional, and the grocery list is deduplicated.
+
+Continue in the same conversation to test saved-recipe management: ask it to change a serving count, ingredient, or direction, then ask it to delete the saved recipe when you are finished. The edit should use `update_recipe` without changing the recipe ID. The deletion should use `remove_recipe`, pause for your on-screen approval, and leave any groceries you already planned intact. The same **Edit recipe** and **Delete recipe** controls appear on saved recipe pages; PantryOS's built-in recipes stay read-only so Reset Demo remains deterministic.
+
 ## Why WebMCP
 
 The kitchen state is personal, changes constantly, and already lives in the page. Doing this the usual way would mean accounts, a database, and an API to put in front of it. WebMCP skips all that: the agent calls validated operations against the state that's already in the browser, so there's no scraping and no second copy of the data to keep in sync.
@@ -37,21 +47,21 @@ There's no account, backend, or cloud database. PantryOS doesn't upload anything
 ## How the two sides share state
 
 - You can add, edit, consume, or bin inventory; save recipes with photos; scale servings; switch units; manage groceries.
-- The agent can read inventory and expiry, find and read recipes, save recipes, consume or add inventory, and plan groceries.
+- The agent can read inventory and expiry, find, save, edit, and delete saved recipes, consume or add inventory, and plan groceries.
 - Both go through the same domain actions, so neither keeps its own copy of the kitchen.
-- Throwing something out always opens the normal confirmation dialog. Declining it, cancelling, navigating away, or having the item vanish underneath all leave inventory alone.
+- Throwing something out or deleting a saved recipe always opens the normal confirmation dialog. Declining it, cancelling, navigating away, or having the target change underneath all leave state alone.
 - The activity rail shows recent tool runs without storing prompt text or secrets.
 
 ## Tools
 
-| Capability                | Tools                                                                   |
-| ------------------------- | ----------------------------------------------------------------------- |
-| Read the kitchen          | `get_inventory`, `get_expiring_items`                                   |
-| Change inventory          | `add_inventory_item`, `consume_inventory_item`, `remove_inventory_item` |
-| Discover and save recipes | `find_recipes`, `get_recipe`, `add_recipe`                              |
-| Plan shopping             | `get_grocery_list`, `add_grocery_item`, `add_recipe_to_grocery_list`    |
+| Capability                  | Tools                                                                        |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| Read the kitchen            | `get_inventory`, `get_expiring_items`                                        |
+| Change inventory            | `add_inventory_item`, `consume_inventory_item`, `remove_inventory_item`      |
+| Discover and manage recipes | `find_recipes`, `get_recipe`, `add_recipe`, `update_recipe`, `remove_recipe` |
+| Plan shopping               | `get_grocery_list`, `add_grocery_item`, `add_recipe_to_grocery_list`         |
 
-All eleven of them:
+All thirteen of them:
 
 - register only after persisted state has hydrated;
 - prefer `document.modelContext`, with one isolated adapter for the deprecated navigator surface;
@@ -104,7 +114,7 @@ npm run verify
 npm run deploy:dry
 ```
 
-`verify` runs Prettier, ESLint, `tsc`, the test suite (31 files, 136 tests), and a production build. `deploy:dry` checks the Cloudflare asset bundle without publishing.
+`verify` runs Prettier, ESLint, `tsc`, the test suite (31 files, 149 tests), and a production build. `deploy:dry` checks the Cloudflare asset bundle without publishing.
 
 ## Deploying
 

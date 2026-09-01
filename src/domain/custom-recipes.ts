@@ -107,6 +107,20 @@ function customRecipeId(title: string, recipes: readonly Recipe[]) {
   );
 }
 
+function recipeFromDraft(id: string, input: CustomRecipeDraft) {
+  const draft = customRecipeDraftSchema.parse(input);
+  return recipeSchema.parse({
+    ...draft,
+    id,
+    totalMinutes:
+      draft.totalMinutes ?? (draft.prepMinutes ?? 0) + (draft.cookMinutes ?? 0),
+    ingredients: draft.ingredients.map((ingredient) => ({
+      ...ingredient,
+      normalizedName: normalizeIngredientName(ingredient.name),
+    })),
+  });
+}
+
 /**
  * One pass over the pasted block, handing back each content line with the
  * "[Section]" heading currently in force. Ingredients and directions share
@@ -121,9 +135,9 @@ function splitSectionedLines(
   for (const raw of value.split(/\r?\n/)) {
     const line = clean(raw);
     if (!line) continue;
-    const heading = line.match(/^\[(.+)]$/);
+    const heading = line.match(/^\[(.*)]$/);
     if (heading) {
-      section = heading[1]!.trim();
+      section = heading[1]!.trim() || undefined;
       continue;
     }
     rows.push({ line, ...(section ? { section } : {}) });
@@ -136,16 +150,14 @@ export function createCustomRecipe(
   input: CustomRecipeDraft,
 ) {
   const draft = customRecipeDraftSchema.parse(input);
-  return recipeSchema.parse({
-    ...draft,
-    id: customRecipeId(draft.title, recipes),
-    totalMinutes:
-      draft.totalMinutes ?? (draft.prepMinutes ?? 0) + (draft.cookMinutes ?? 0),
-    ingredients: draft.ingredients.map((ingredient) => ({
-      ...ingredient,
-      normalizedName: normalizeIngredientName(ingredient.name),
-    })),
-  });
+  return recipeFromDraft(customRecipeId(draft.title, recipes), draft);
+}
+
+export function updateCustomRecipe(recipe: Recipe, input: CustomRecipeDraft) {
+  if (!recipe.id.startsWith("custom-")) {
+    throw new Error("Only saved recipes can be edited.");
+  }
+  return recipeFromDraft(recipe.id, input);
 }
 
 export function parseRecipeIngredients(value: string) {
@@ -180,14 +192,110 @@ export function parseRecipeIngredients(value: string) {
 
 export function parseRecipeSteps(value: string) {
   const stripNumbering = (line: string) =>
-    line.trim().replace(/^\d+[.)]\s*/, "");
+    line.trim().startsWith("\\:")
+      ? line.trim()
+      : line.trim().replace(/^\d+[.)]\s*/, "");
   return splitSectionedLines(value, stripNumbering).map(({ line, section }) => {
-    const [instruction, ...noteParts] = line.split(/\s+\|\s+/);
-    const note = noteParts.join(" | ").trim();
+    const [instruction, note] = splitStepNote(line);
     return {
-      instruction: instruction!.trim(),
-      ...(section ? { section } : {}),
-      ...(note ? { note } : {}),
+      instruction: unescapeFormText(instruction.trim()),
+      ...(section ? { section: unescapeFormText(section) } : {}),
+      ...(note ? { note: unescapeFormText(note.trim()) } : {}),
     };
   });
+}
+
+function splitStepNote(line: string): [string, string?] {
+  const separators = line.matchAll(/\s+\|\s+/g);
+  for (const separator of separators) {
+    const match = separator[0];
+    const pipeIndex = separator.index! + match.indexOf("|");
+    let slashCount = 0;
+    for (let index = pipeIndex - 1; line[index] === "\\"; index -= 1) {
+      slashCount += 1;
+    }
+    if (slashCount % 2 === 0) {
+      return [
+        line.slice(0, separator.index),
+        line.slice(separator.index! + match.length),
+      ];
+    }
+  }
+  return [line];
+}
+
+function escapeFormText(value: string, protectLeadingSyntax = false) {
+  const needsEscaping =
+    /[\\\r\n|]/.test(value) ||
+    (protectLeadingSyntax &&
+      (/^\d+[.)]\s/.test(value) || /^\[.*]$/.test(value)));
+  if (!needsEscaping) return value;
+  return `\\:${value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\n", "\\n")
+    .replaceAll("|", "\\|")}`;
+}
+
+function unescapeFormText(value: string) {
+  if (!value.startsWith("\\:")) return value;
+  value = value.slice(2);
+  let result = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]!;
+    if (character !== "\\" || index === value.length - 1) {
+      result += character;
+      continue;
+    }
+    const next = value[index + 1]!;
+    if (next === "n") result += "\n";
+    else if (next === "r") result += "\r";
+    else if (next === "\\" || next === "|") {
+      result += next;
+    } else {
+      result += `\\${next}`;
+    }
+    index += 1;
+  }
+  return result;
+}
+
+function sectionedLines<T extends { section?: string }>(
+  rows: readonly T[],
+  format: (row: T) => string,
+  formatSection: (section: string) => string = (section) => section,
+) {
+  const lines: string[] = [];
+  let activeSection: string | undefined;
+  for (const row of rows) {
+    if (row.section !== activeSection) {
+      lines.push(`[${formatSection(row.section ?? "")}]`);
+      activeSection = row.section;
+    }
+    lines.push(format(row));
+  }
+  return lines.join("\n");
+}
+
+export function formatRecipeIngredientsForForm(recipe: Recipe) {
+  return sectionedLines(recipe.ingredients, (ingredient) => {
+    const amount =
+      ingredient.quantity === undefined
+        ? ""
+        : `${ingredient.quantity} ${ingredient.displayUnit} `;
+    return `${amount}${ingredient.name}${ingredient.optional ? " (optional)" : ""}`;
+  });
+}
+
+export function formatRecipeStepsForForm(recipe: Recipe) {
+  return sectionedLines(
+    recipe.steps,
+    (step) => {
+      const instruction = escapeFormText(step.instruction, true);
+      return step.note
+        ? `${instruction} | ${escapeFormText(step.note)}`
+        : instruction;
+    },
+    escapeFormText,
+  );
 }

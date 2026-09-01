@@ -63,6 +63,8 @@ const FRIENDLY_ACTION = {
   find_recipes: "Looked for a meal",
   get_recipe: "Opened a recipe",
   add_recipe: "Saved a recipe",
+  update_recipe: "Edited a recipe",
+  remove_recipe: "Deleted a recipe",
   add_grocery_item: "Added a grocery item",
   add_recipe_to_grocery_list: "Planned shopping for a meal",
   get_grocery_list: "Checked your grocery list",

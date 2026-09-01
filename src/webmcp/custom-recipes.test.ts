@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearAgentActivity } from "../stores/agent-activity-store";
 import { createKitchenStore } from "../stores/kitchen-store";
 import { createPantryTools } from "./tools";
@@ -99,6 +99,205 @@ describe("saved recipes in WebMCP", () => {
     });
   });
 
+  it("updates and confirms removal of saved recipes only", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const confirm = vi
+      .fn()
+      .mockResolvedValueOnce("cancelled")
+      .mockResolvedValueOnce("declined")
+      .mockResolvedValueOnce("confirmed");
+    const tools = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+      requestConfirmation: confirm,
+    });
+    const execute = async (name: string, input: Record<string, unknown>) => {
+      const tool = tools.find((candidate) => candidate.name === name);
+      if (!tool) throw new Error(`Missing tool ${name}`);
+      return await tool.execute(input, {
+        signal: new AbortController().signal,
+      });
+    };
+    const recipe = {
+      title: "Toast",
+      description: "A saved snack.",
+      servings: 1,
+      timing: { totalMinutes: 5 },
+      ingredients: [
+        { name: "bread", quantity: 1, displayUnit: "count" as const },
+      ],
+      steps: [{ instruction: "Toast the bread." }],
+    };
+    const { timing, ...recipeFields } = recipe;
+    const saved = store.getState().addCustomRecipe({
+      ...recipeFields,
+      totalMinutes: timing.totalMinutes,
+      photo: {
+        dataUrl: "data:image/webp;base64,AAAA",
+        alt: "Toast on a plate",
+      },
+    });
+    const recipeId = saved.id;
+    await execute("add_recipe_to_grocery_list", { recipeId });
+
+    await expect(
+      execute("update_recipe", {
+        recipeId,
+        ...recipe,
+        title: "Herby Toast",
+        servings: 2,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: {
+        recipeId,
+        title: "Herby Toast",
+        servings: 2,
+        hasPhoto: true,
+      },
+    });
+    expect(store.getState().customRecipes[0]).toMatchObject({
+      id: recipeId,
+      photo: {
+        dataUrl: "data:image/webp;base64,AAAA",
+        alt: "Toast on a plate",
+      },
+    });
+    await expect(
+      execute("update_recipe", { recipeId: "custom-missing", ...recipe }),
+    ).resolves.toMatchObject({ ok: false, error: "recipe_not_found" });
+    await expect(
+      execute("update_recipe", { recipeId: "chicken-saag", ...recipe }),
+    ).resolves.toMatchObject({ ok: false, error: "recipe_read_only" });
+    await expect(
+      execute("remove_recipe", { recipeId: "chicken-saag" }),
+    ).resolves.toMatchObject({ ok: false, error: "recipe_read_only" });
+
+    await expect(execute("remove_recipe", { recipeId })).resolves.toMatchObject(
+      { ok: false, error: "cancelled" },
+    );
+    expect(store.getState().customRecipes).toHaveLength(1);
+    await expect(execute("remove_recipe", { recipeId })).resolves.toMatchObject(
+      { ok: false, error: "declined" },
+    );
+    expect(store.getState().customRecipes).toHaveLength(1);
+    await expect(execute("remove_recipe", { recipeId })).resolves.toMatchObject(
+      {
+        ok: true,
+        data: { recipeId, removed: true },
+      },
+    );
+    expect(store.getState().customRecipes).toEqual([]);
+    expect(store.getState().groceries).toHaveLength(1);
+    expect(store.getState().groceries[0]?.sourceRecipeId).toBeUndefined();
+    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Delete Herby Toast?",
+        confirmLabel: "Delete recipe",
+        cancelLabel: "Keep recipe",
+        description: expect.stringContaining("Grocery items"),
+      }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("fails closed when a saved recipe changes while deletion is awaiting approval", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const saved = store.getState().addCustomRecipe({
+      title: "Toast",
+      description: "A saved snack.",
+      servings: 1,
+      totalMinutes: 5,
+      ingredients: [{ name: "bread" }],
+      steps: [{ instruction: "Toast the bread." }],
+    });
+    const tools = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+      requestConfirmation: async () => {
+        store.getState().editCustomRecipe(saved.id, {
+          title: "Changed Toast",
+          description: "It changed while approval was open.",
+          servings: 2,
+          totalMinutes: 6,
+          ingredients: [{ name: "bread" }],
+          steps: [{ instruction: "Toast two slices." }],
+        });
+        return "confirmed";
+      },
+    });
+    const remove = tools.find((tool) => tool.name === "remove_recipe")!;
+
+    await expect(
+      remove.execute(
+        { recipeId: saved.id },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: "recipe_changed" });
+    expect(store.getState().customRecipes).toMatchObject([
+      { id: saved.id, title: "Changed Toast" },
+    ]);
+  });
+
+  it("reports when a saved recipe disappears while deletion is awaiting approval", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const saved = store.getState().addCustomRecipe({
+      title: "Toast",
+      description: "A saved snack.",
+      servings: 1,
+      totalMinutes: 5,
+      ingredients: [{ name: "bread" }],
+      steps: [{ instruction: "Toast the bread." }],
+    });
+    const tools = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+      requestConfirmation: async () => {
+        store.getState().removeCustomRecipe(saved.id);
+        return "confirmed";
+      },
+    });
+    const remove = tools.find((tool) => tool.name === "remove_recipe")!;
+
+    await expect(
+      remove.execute(
+        { recipeId: saved.id },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: "recipe_not_found" });
+    expect(store.getState().customRecipes).toEqual([]);
+  });
+
+  it("aborts an open recipe deletion without mutation", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const saved = store.getState().addCustomRecipe({
+      title: "Toast",
+      description: "A saved snack.",
+      servings: 1,
+      totalMinutes: 5,
+      ingredients: [{ name: "bread" }],
+      steps: [{ instruction: "Toast the bread." }],
+    });
+    const remove = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+    }).find((tool) => tool.name === "remove_recipe")!;
+    const controller = new AbortController();
+
+    const pending = remove.execute(
+      { recipeId: saved.id },
+      { signal: controller.signal },
+    );
+    controller.abort();
+
+    await expect(pending).resolves.toMatchObject({
+      ok: false,
+      error: "cancelled",
+    });
+    expect(store.getState().customRecipes).toMatchObject([{ id: saved.id }]);
+  });
+
   it("rejects malformed rich recipes and invalid serving targets without mutation", async () => {
     const store = createKitchenStore({ now: () => TODAY });
     const tools = createPantryTools({
@@ -164,6 +363,22 @@ describe("saved recipes in WebMCP", () => {
       "custom-audit-soup-2",
     ]);
 
+    const beforeInvalidUpdate = store.getState().customRecipes[0];
+    await expect(
+      execute("update_recipe", {
+        recipeId: first.data.recipeId,
+        ...valid,
+        surprise: true,
+      }),
+    ).resolves.toMatchObject({ ok: false, error: "invalid_input" });
+    await expect(
+      execute("update_recipe", {
+        recipeId: first.data.recipeId,
+        title: valid.title,
+      }),
+    ).resolves.toMatchObject({ ok: false, error: "invalid_input" });
+    expect(store.getState().customRecipes[0]).toEqual(beforeInvalidUpdate);
+
     for (const targetServings of [0, 25]) {
       await expect(
         execute("add_recipe_to_grocery_list", {
@@ -177,20 +392,36 @@ describe("saved recipes in WebMCP", () => {
 
   it("accepts the full bounded sum of separate prep and cooking times", async () => {
     const store = createKitchenStore({ now: () => TODAY });
-    const tool = createPantryTools({
+    const tools = createPantryTools({
       getKitchenState: store.getState,
       now: () => TODAY,
-    }).find((candidate) => candidate.name === "add_recipe")!;
+    });
+    const add = tools.find((candidate) => candidate.name === "add_recipe")!;
+    const update = tools.find(
+      (candidate) => candidate.name === "update_recipe",
+    )!;
 
+    const recipe = {
+      title: "Weekend Stock",
+      description: "A long, hands-off kitchen project.",
+      servings: 4,
+      ingredients: [{ name: "bones" }],
+      steps: [{ instruction: "Simmer slowly." }],
+    };
+    const added = (await add.execute(
+      { ...recipe, timing: { prepMinutes: 300, cookMinutes: 300 } },
+      { signal: new AbortController().signal },
+    )) as { data: { recipeId: string } };
+    expect(added).toMatchObject({
+      ok: true,
+      data: { totalMinutes: 600 },
+    });
     await expect(
-      tool.execute(
+      update.execute(
         {
-          title: "Weekend Stock",
-          description: "A long, hands-off kitchen project.",
-          servings: 4,
-          timing: { prepMinutes: 300, cookMinutes: 300 },
-          ingredients: [{ name: "bones" }],
-          steps: [{ instruction: "Simmer slowly." }],
+          recipeId: added.data.recipeId,
+          ...recipe,
+          timing: { totalMinutes: 600 },
         },
         { signal: new AbortController().signal },
       ),

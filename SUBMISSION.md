@@ -38,19 +38,19 @@ It's not just a chat box bolted onto an app. An agent can take a recipe from the
 
 You can ask for the outcome instead of walking through four screens. "Find dinner under 30 minutes that uses what expires first and needs at most two new ingredients" pulls together live inventory, calendar-day expiry, ingredient aliases, staples, optional ingredients, and the recipe score. The follow-up adds exactly what's missing, without duplicating something already on the list.
 
-Saved recipes carry prep and cook times, ingredient and method sections, step notes, serving scaling, US-to-metric conversion, and optional photos that stay in the browser. The `add_recipe` tool and the recipe form call the same store action, so it makes no difference afterwards which one created a recipe.
+Saved recipes carry prep and cook times, ingredient and method sections, step notes, serving scaling, US-to-metric conversion, and optional photos that stay in the browser. The recipe form and the `add_recipe`, `update_recipe`, and `remove_recipe` tools call the same store actions, so either side can manage a saved recipe while built-in recipes remain read-only.
 
 ### Sharing control with the agent
 
-The agent reads inventory, expiry, recipes, and groceries, and can add or consume inventory, save recipes, and plan shopping. You keep the visible app and the last word on anything destructive. Binning food opens the same confirmation dialog the normal UI uses; declining, cancelling, navigating away, or having the item disappear all leave state alone.
+The agent reads inventory, expiry, recipes, and groceries, and can add or consume inventory, manage saved recipes, and plan shopping. You keep the visible app and the last word on anything destructive. Binning food or deleting a saved recipe opens the same confirmation dialog the normal UI uses; declining, cancelling, navigating away, or having the target change all leave state alone.
 
 The activity rail shows what's running and what just ran. Both sides go through the same domain actions, so the UI, storage, and tool responses can't drift apart.
 
 ### How it's built
 
-Client-only React and TypeScript SPA on Cloudflare Workers Static Assets. Zustand persists inventory, saved recipes, and groceries to `localStorage`. Eleven imperative WebMCP tools register after hydration through `document.modelContext`, with one isolated adapter for the deprecated navigator surface.
+Client-only React and TypeScript SPA on Cloudflare Workers Static Assets. Zustand persists inventory, saved recipes, and groceries to `localStorage`. Thirteen imperative WebMCP tools register after hydration through `document.modelContext`, with one isolated adapter for the deprecated navigator surface.
 
-Every input is validated with Zod and published with a matching closed JSON Schema. Callbacks read current Zustand state when they run, return structured results for success and failure, mark user-authored output as untrusted, clean up on abort, and call the same domain actions the UI does. Registration, persistence recovery, payload caps, ambiguous identifiers, bad dates and units, hostile-looking text, deduplication, confirmation races, and every tool's success and error paths are covered by tests and a live-browser pass.
+Every input is validated with Zod and published with a matching closed JSON Schema. Callbacks read current Zustand state when they run, return structured results for success and failure, mark user-authored output as untrusted, clean up on abort, and call the same domain actions the UI does. Registration, persistence recovery, payload caps, ambiguous identifiers, bad dates and units, hostile-looking text, deduplication, confirmation races, and every tool's success and error paths are covered by automated regressions. The final release checklist repeats the native WebMCP browser pass against the exact deployed 13-tool build.
 
 PantryOS doesn't upload kitchen data itself. Once you invoke a tool, its inputs and results go through whatever agent or AI provider you're using. Recipe images are a browser upload and never appear in a tool result.
 
@@ -62,7 +62,7 @@ Kitchen apps store lists well enough, but you're still the one joining up expiry
 
 ### What it does
 
-Tracks local inventory and expiry, suggests meals that use food in time, saves rich recipes, scales quantities, converts units, and adds only the missing groceries. Eleven WebMCP tools give an agent the same reads and writes you have, with visible activity and a human confirmation before anything is removed.
+Tracks local inventory and expiry, suggests meals that use food in time, manages rich saved recipes, scales quantities, converts units, and adds only the missing groceries. Thirteen WebMCP tools give an agent the same reads and writes you have, with visible activity and a human confirmation before anything is removed.
 
 ### How we built it
 
@@ -74,11 +74,11 @@ Most of the difficulty sat between a fast agent workflow and predictable applica
 
 ### Accomplishments we're proud of
 
-- Eleven non-trivial tools working against live persisted browser state.
+- Thirteen non-trivial tools working against live persisted browser state.
 - UI and tools stay in sync because they share domain actions.
 - Destructive removal fails closed and needs visible approval.
 - Recipes saved from either side take part in matching, scaling, conversion, and grocery planning.
-- 136 automated tests pass, alongside a native-WebMCP browser pass covering malformed input, cancellation, persistence, confirmation races, payload caps, and adversarial text.
+- 149 automated tests pass. The historical native-WebMCP browser pass covers malformed input, cancellation, persistence, confirmation races, payload caps, and adversarial text; the two new saved-recipe lifecycle tools still need their fresh deployed browser pass.
 
 ### What we learned
 
@@ -132,7 +132,7 @@ Serve with lemon if using.
 
 Show the dashboard, food expiring in the next few days, the AI panel ready, activity empty.
 
-> "This is PantryOS, a local-first kitchen where you and your browser agent work on the same live inventory. Rather than guessing from the screen, the agent gets eleven structured WebMCP tools backed by the same actions the interface uses."
+> "This is PantryOS, a local-first kitchen where you and your browser agent work on the same live inventory. Rather than guessing from the screen, the agent gets thirteen structured WebMCP tools backed by the same actions the interface uses."
 
 ### 0:20–0:58 — Conversation into state
 
