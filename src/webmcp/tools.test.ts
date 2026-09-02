@@ -55,7 +55,7 @@ afterEach(() => {
 });
 
 describe("PantryOS WebMCP tool contracts", () => {
-  it("publishes exactly thirteen annotated, closed object schemas", () => {
+  it("publishes exactly fourteen annotated, closed object schemas", () => {
     const { tools } = makeHarness();
 
     expect(tools.map((tool) => tool.name)).toEqual([
@@ -72,6 +72,7 @@ describe("PantryOS WebMCP tool contracts", () => {
       "add_grocery_item",
       "add_recipe_to_grocery_list",
       "get_grocery_list",
+      "navigate_pantryos",
     ]);
     for (const tool of tools) {
       expect(tool.title).toBeTruthy();
@@ -142,6 +143,122 @@ describe("PantryOS WebMCP tool contracts", () => {
       properties: { recipeId: { pattern: "\\S" } },
       required: ["recipeId"],
     });
+    expect(
+      tools.find((tool) => tool.name === "navigate_pantryos")?.inputSchema,
+    ).toMatchObject({
+      properties: {
+        destination: {
+          enum: ["dashboard", "kitchen", "recipes", "groceries"],
+        },
+        recipeId: { pattern: "\\S" },
+      },
+      required: ["destination"],
+      allOf: [
+        {
+          if: { required: ["recipeId"] },
+          then: { properties: { destination: { const: "recipes" } } },
+        },
+      ],
+    });
+    expectEveryPropertyDescribed(
+      tools.find((tool) => tool.name === "navigate_pantryos")?.inputSchema,
+    );
+    expect(
+      tools.find((tool) => tool.name === "navigate_pantryos")?.annotations,
+    ).toMatchObject({ readOnlyHint: false });
+  });
+
+  it("navigates only to scoped PantryOS routes and exact recipes", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const navigate = vi.fn();
+    const tools = createPantryTools({
+      getKitchenState: store.getState,
+      navigate,
+      now: () => TODAY,
+    });
+    const navigation = tools.find(
+      (candidate) => candidate.name === "navigate_pantryos",
+    )!;
+    const execute = (input: Record<string, unknown>) =>
+      navigation.execute(input, {
+        signal: new AbortController().signal,
+      });
+
+    for (const [destination, path] of [
+      ["dashboard", "/"],
+      ["kitchen", "/kitchen"],
+      ["recipes", "/recipes"],
+      ["groceries", "/groceries"],
+    ] as const) {
+      await expect(execute({ destination })).resolves.toMatchObject({
+        ok: true,
+        data: { destination, path },
+      });
+    }
+    await expect(
+      execute({ destination: "recipes", recipeId: "chicken-saag" }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: {
+        destination: "recipes",
+        path: "/recipes/chicken-saag",
+        recipeId: "chicken-saag",
+      },
+    });
+    expect(navigate.mock.calls.map(([path]) => path)).toEqual([
+      "/",
+      "/kitchen",
+      "/recipes",
+      "/groceries",
+      "/recipes/chicken-saag",
+    ]);
+
+    navigate.mockClear();
+    await expect(
+      execute({ destination: "kitchen", recipeId: "chicken-saag" }),
+    ).resolves.toMatchObject({ ok: false, error: "invalid_input" });
+    await expect(
+      execute({ destination: "recipes", recipeId: "unknown-recipe" }),
+    ).resolves.toMatchObject({ ok: false, error: "recipe_not_found" });
+    await expect(
+      execute({ destination: "outside", url: "https://example.com" }),
+    ).resolves.toMatchObject({ ok: false, error: "invalid_input" });
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("reports unavailable or failed navigation without changing kitchen state", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const before = store.getState();
+    const unavailable = createPantryTools({
+      getKitchenState: store.getState,
+      now: () => TODAY,
+    }).find((tool) => tool.name === "navigate_pantryos")!;
+    await expect(
+      unavailable.execute(
+        { destination: "dashboard" },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: "navigation_unavailable",
+    });
+
+    const failed = createPantryTools({
+      getKitchenState: store.getState,
+      navigate: () => {
+        throw new Error("route failed");
+      },
+      now: () => TODAY,
+    }).find((tool) => tool.name === "navigate_pantryos")!;
+    await expect(
+      failed.execute(
+        { destination: "groceries" },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: "navigation_failed" });
+    expect(store.getState().inventory).toEqual(before.inventory);
+    expect(store.getState().groceries).toEqual(before.groceries);
+    expect(store.getState().customRecipes).toEqual(before.customRecipes);
   });
 
   it("rejects unknown or incomplete input before mutation", async () => {

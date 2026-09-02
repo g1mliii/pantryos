@@ -68,6 +68,7 @@ const FRIENDLY_ACTION = {
   add_grocery_item: "Added a grocery item",
   add_recipe_to_grocery_list: "Planned shopping for a meal",
   get_grocery_list: "Checked your grocery list",
+  navigate_pantryos: "Opened PantryOS",
 } as const;
 
 function friendlyAction(toolName: string) {

@@ -369,6 +369,26 @@ const addRecipeToGroceriesInput = z
   })
   .strict();
 
+const navigatePantryInput = z
+  .object({
+    destination: z
+      .enum(["dashboard", "kitchen", "recipes", "groceries"])
+      .describe("The PantryOS section to open."),
+    recipeId: toolId
+      .optional()
+      .describe(
+        "Optional exact recipeId to open; valid only with the recipes destination.",
+      ),
+  })
+  .strict()
+  .refine(
+    (input) => input.recipeId === undefined || input.destination === "recipes",
+    {
+      message: "recipeId can be used only with the recipes destination",
+      path: ["recipeId"],
+    },
+  );
+
 const noInput = z.object({}).strict();
 
 const locatorJsonConstraint = {
@@ -387,9 +407,18 @@ const quantityPairJsonConstraint = {
     },
   ],
 };
+const recipeNavigationJsonConstraint = {
+  allOf: [
+    {
+      if: { required: ["recipeId"] },
+      then: { properties: { destination: { const: "recipes" } } },
+    },
+  ],
+};
 
 interface PantryToolDependencies {
   getKitchenState?: () => KitchenStoreState;
+  navigate?: (path: string) => Promise<void> | void;
   now?: () => Date;
   requestConfirmation?: (
     request: Parameters<typeof requestConfirmation>[0],
@@ -441,6 +470,7 @@ export function createPantryTools(
   dependencies: PantryToolDependencies = {},
 ): WebMCP.ModelContextTool[] {
   const getKitchenState = dependencies.getKitchenState ?? kitchenStore.getState;
+  const navigate = dependencies.navigate;
   const now = dependencies.now ?? (() => new Date());
   const confirm = dependencies.requestConfirmation ?? requestConfirmation;
 
@@ -805,22 +835,43 @@ export function createPantryTools(
         "Use to save a complete recipe, including one extracted from text or an image attached in the AI conversation. Send one timing form plus structured ingredients and steps; PantryOS recipe photos are added separately in the browser form.",
       inputSchema: toToolJsonSchema(addRecipeInput),
       annotations: { readOnlyHint: false, untrustedContentHint: true },
-      execute: createToolExecutor("add_recipe", addRecipeInput, (input) => {
-        const { timing, ...recipeFields } = input;
-        // createCustomRecipe derives the total from prep plus cook, so either
-        // timing form can be passed straight through.
-        const recipe = getKitchenState().addCustomRecipe({
-          ...recipeFields,
-          ...timing,
-        });
-        return toolSuccess(`Saved ${recipe.title} to your recipes.`, {
-          recipeId: recipe.id,
-          title: recipe.title,
-          servings: recipe.servings,
-          totalMinutes: recipe.totalMinutes,
-          hasPhoto: false,
-        });
-      }),
+      execute: createToolExecutor(
+        "add_recipe",
+        addRecipeInput,
+        async (input) => {
+          const { timing, ...recipeFields } = input;
+          // createCustomRecipe derives the total from prep plus cook, so either
+          // timing form can be passed straight through.
+          const recipe = getKitchenState().addCustomRecipe({
+            ...recipeFields,
+            ...timing,
+          });
+          let navigated = false;
+          if (navigate) {
+            try {
+              await navigate(`/recipes/${encodeURIComponent(recipe.id)}`);
+              navigated = true;
+            } catch {
+              // Saving is the primary action. A route failure must not turn a
+              // persisted recipe into an apparent failed save that an agent
+              // might retry and duplicate.
+            }
+          }
+          return toolSuccess(
+            navigated
+              ? `Saved ${recipe.title} and opened the recipe.`
+              : `Saved ${recipe.title} to your recipes.`,
+            {
+              recipeId: recipe.id,
+              title: recipe.title,
+              servings: recipe.servings,
+              totalMinutes: recipe.totalMinutes,
+              hasPhoto: false,
+              navigated,
+            },
+          );
+        },
+      ),
     },
     {
       name: "update_recipe",
@@ -1055,6 +1106,75 @@ export function createPantryTools(
           },
         );
       }),
+    },
+    {
+      name: "navigate_pantryos",
+      title: "Open a PantryOS view",
+      description:
+        "Use only when the user asks to see a PantryOS section or an exact recipe already identified by recipeId. Do not use for browser tabs, external URLs, or recipe search.",
+      inputSchema: toToolJsonSchema(
+        navigatePantryInput,
+        recipeNavigationJsonConstraint,
+      ),
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
+      execute: createToolExecutor(
+        "navigate_pantryos",
+        navigatePantryInput,
+        async (input) => {
+          if (!navigate) {
+            return toolFailure(
+              "PantryOS navigation is not available in this view.",
+              "navigation_unavailable",
+            );
+          }
+
+          let path: string;
+          let label: string;
+          if (input.destination === "dashboard") {
+            path = "/";
+            label = "the PantryOS dashboard";
+          } else if (input.destination === "kitchen") {
+            path = "/kitchen";
+            label = "your kitchen";
+          } else if (input.destination === "groceries") {
+            path = "/groceries";
+            label = "your grocery list";
+          } else if (input.recipeId) {
+            const recipeId = input.recipeId.trim();
+            const recipe = getRecipeById(
+              recipeId,
+              getAllRecipes(getKitchenState().customRecipes),
+            );
+            if (!recipe) {
+              return toolFailure(
+                `No recipe has id "${recipeId}". Call find_recipes for valid ids.`,
+                "recipe_not_found",
+              );
+            }
+            path = `/recipes/${encodeURIComponent(recipe.id)}`;
+            label = recipe.title;
+          } else {
+            path = "/recipes";
+            label = "your recipes";
+          }
+
+          try {
+            await navigate(path);
+          } catch {
+            return toolFailure(
+              `PantryOS could not open ${label}. Try the navigation again.`,
+              "navigation_failed",
+            );
+          }
+          return toolSuccess(`Opened ${label}.`, {
+            destination: input.destination,
+            path,
+            ...(input.destination === "recipes" && input.recipeId
+              ? { recipeId: input.recipeId.trim() }
+              : {}),
+          });
+        },
+      ),
     },
   ];
 }

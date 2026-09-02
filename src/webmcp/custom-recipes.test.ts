@@ -14,8 +14,10 @@ afterEach(() => {
 describe("saved recipes in WebMCP", () => {
   it("creates, finds, reads, and scales a rich saved recipe", async () => {
     const store = createKitchenStore({ now: () => TODAY });
+    const navigate = vi.fn();
     const tools = createPantryTools({
       getKitchenState: store.getState,
+      navigate,
       now: () => TODAY,
     });
     const execute = async (name: string, input: Record<string, unknown>) => {
@@ -61,6 +63,11 @@ describe("saved recipes in WebMCP", () => {
       ],
     })) as { data: { recipeId: string } };
     const recipeId = added.data.recipeId;
+    expect(added).toMatchObject({
+      ok: true,
+      data: { recipeId, navigated: true },
+    });
+    expect(navigate).toHaveBeenCalledWith(`/recipes/${recipeId}`);
 
     await expect(
       execute("find_recipes", { query: "Spinach Toast" }),
@@ -388,6 +395,41 @@ describe("saved recipes in WebMCP", () => {
       ).resolves.toMatchObject({ ok: false, error: "invalid_input" });
     }
     expect(store.getState().groceries).toEqual([]);
+  });
+
+  it("keeps a successful recipe save when opening its page fails", async () => {
+    const store = createKitchenStore({ now: () => TODAY });
+    const add = createPantryTools({
+      getKitchenState: store.getState,
+      navigate: () => {
+        throw new Error("router unavailable");
+      },
+      now: () => TODAY,
+    }).find((tool) => tool.name === "add_recipe")!;
+
+    await expect(
+      add.execute(
+        {
+          title: "Reliable Toast",
+          description: "A save that survives a route failure.",
+          servings: 1,
+          timing: { totalMinutes: 5 },
+          ingredients: [{ name: "bread", quantity: 1, displayUnit: "count" }],
+          steps: [{ instruction: "Toast the bread." }],
+        },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      summary: "Saved Reliable Toast to your recipes.",
+      data: {
+        recipeId: "custom-reliable-toast",
+        navigated: false,
+      },
+    });
+    expect(store.getState().customRecipes).toMatchObject([
+      { id: "custom-reliable-toast", title: "Reliable Toast" },
+    ]);
   });
 
   it("accepts the full bounded sum of separate prep and cooking times", async () => {

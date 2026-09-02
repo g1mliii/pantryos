@@ -1,4 +1,11 @@
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { useState } from "react";
+import {
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+} from "react-router-dom";
 import { AgentActivityPanel } from "./components/agent/AgentActivityPanel";
 import { ConfirmationDialog, MAIN_REGION_ID } from "./components/ui";
 import { DashboardPage } from "./routes/DashboardPage";
@@ -8,6 +15,7 @@ import { KitchenPage } from "./routes/KitchenPage";
 import { RecipeDetailPage } from "./routes/RecipeDetailPage";
 import { RecipesPage } from "./routes/RecipesPage";
 import { useKitchenStore } from "./stores/kitchen-store";
+import { createPantryTools } from "./webmcp/tools";
 import { usePantryToolsStatus } from "./webmcp/use-pantry-tools";
 
 const navigation = [
@@ -18,10 +26,16 @@ const navigation = [
 ] as const;
 
 export default function App() {
+  const navigate = useNavigate();
   const kitchenReady = useKitchenStore(
     (state) => state.hasHydrated && state.hasInitialized,
   );
-  const webMcpStatus = usePantryToolsStatus(kitchenReady);
+  // Tool destinations are absolute paths, so the initial router callback does
+  // not depend on the current pathname. Keep one registry for this app mount.
+  const [pantryTools] = useState(() =>
+    createPantryTools({ navigate: (path) => navigate(path) }),
+  );
+  const webMcpStatus = usePantryToolsStatus(kitchenReady, pantryTools);
 
   return (
     <div className="min-h-screen bg-paper text-ink">

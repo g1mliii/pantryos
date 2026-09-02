@@ -10,7 +10,7 @@ import { AgentActivityPanel } from "./AgentActivityPanel";
 afterEach(clearAgentActivity);
 
 describe("AgentActivityPanel", () => {
-  it("shows a ready thirteen-tool status and the latest completed call", () => {
+  it("shows a ready fourteen-tool status and the latest completed call", () => {
     const id = beginAgentActivity("get_expiring_items", {});
     finishAgentActivity(id, "success", "Found three things.");
 
@@ -18,9 +18,9 @@ describe("AgentActivityPanel", () => {
       <AgentActivityPanel
         status={{
           state: "ready",
-          registeredCount: 13,
+          registeredCount: 14,
           source: "document",
-          total: 13,
+          total: 14,
         }}
       />,
     );
@@ -41,9 +41,9 @@ describe("AgentActivityPanel", () => {
       <AgentActivityPanel
         status={{
           state: "ready",
-          registeredCount: 13,
+          registeredCount: 14,
           source: "document",
-          total: 13,
+          total: 14,
         }}
       />,
     );
@@ -60,7 +60,7 @@ describe("AgentActivityPanel", () => {
         status={{
           state: "unavailable",
           registeredCount: 0,
-          total: 13,
+          total: 14,
         }}
       />,
     );

@@ -4,7 +4,7 @@
 
 A local-first kitchen app where you and a browser agent work on the same data. Inventory, expiry dates, recipes, and the grocery list are all in `localStorage`, and WebMCP exposes them to an agent as real tools instead of something to click through.
 
-**[Open PantryOS](https://pantryos.pressplay-subai.workers.dev)**
+**[Open PantryOS](https://pantryos.pressplay-subai.workers.dev)** · **[Watch the 2:55 demo](https://vimeo.com/1223495411)**
 
 You usually know there's food in the fridge. What you don't know is what's about to go off, or what you can cook with it tonight without another shop. PantryOS keeps track of that, ranks recipes by what you already have and what needs using first, and puts only the genuinely missing items on the list.
 
@@ -60,8 +60,9 @@ There's no account, backend, or cloud database. PantryOS doesn't upload anything
 | Change inventory            | `add_inventory_item`, `consume_inventory_item`, `remove_inventory_item`      |
 | Discover and manage recipes | `find_recipes`, `get_recipe`, `add_recipe`, `update_recipe`, `remove_recipe` |
 | Plan shopping               | `get_grocery_list`, `add_grocery_item`, `add_recipe_to_grocery_list`         |
+| Open PantryOS views         | `navigate_pantryos`                                                          |
 
-All thirteen of them:
+All fourteen of them:
 
 - register only after persisted state has hydrated;
 - prefer `document.modelContext`, with one isolated adapter for the deprecated navigator surface;
@@ -114,7 +115,7 @@ npm run verify
 npm run deploy:dry
 ```
 
-`verify` runs Prettier, ESLint, `tsc`, the test suite (31 files, 149 tests), and a production build. `deploy:dry` checks the Cloudflare asset bundle without publishing.
+`verify` runs Prettier, ESLint, `tsc`, the test suite (31 files, 153 tests), and a production build. `deploy:dry` checks the Cloudflare asset bundle without publishing.
 
 ## Deploying
 
