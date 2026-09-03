@@ -18,9 +18,8 @@ const TYPEAHEAD_RESET_MS = 500;
 /**
  * The app's one menu primitive. Every dropdown goes through this.
  *
- * Motion contract (see .claude/skills/pantryos-ui): only `opacity` and
- * `transform` animate, 140ms in / 90ms out. The list stays mounted and toggles
- * visibility so the exit transition actually plays.
+ * Only `opacity` and `transform` animate, 140ms in / 90ms out. The list stays
+ * mounted and toggles visibility so the exit transition actually plays.
  */
 export function Select<T extends string = string>({
   disabled = false,

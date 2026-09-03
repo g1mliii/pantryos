@@ -2,7 +2,6 @@
 
 /*
  * PantryOS design tokens.
- * Source of truth for the visuals is design/*.dc.html — see .claude/skills/pantryos-ui.
  * Change a value here, never in a component.
  */
 @theme {

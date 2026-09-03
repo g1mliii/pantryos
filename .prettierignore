@@ -3,8 +3,3 @@ coverage/
 node_modules/
 .wrangler/
 package-lock.json
-
-# Design Component artboards — a specific format; Prettier reflows them and
-# can break the <x-dc> template. Edit by hand, re-seed with the design skill.
-design/*.dc.html
-design/pantryos-ui.html

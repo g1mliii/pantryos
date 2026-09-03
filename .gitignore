@@ -12,12 +12,3 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
-
-# Generated design canvas (2MB payload; re-seed from design/*.dc.html)
-design/pantryos-ui.html
-
-# Working notes kept locally, not published with the repo
-PANTRYOS_IMPLEMENTATION_PLAN.md
-PANTRYOS_PLAN_REVIEW.md
-WEBMCP_TEST_CHECKLIST.md
-WEBMCP_PHASE6_TEST_CHECKLIST.md
