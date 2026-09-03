@@ -6,7 +6,16 @@ Copy for the Devpost entry, plus the demo script and recording checklist.
 
 - Live app: <https://pantryos.pressplay-subai.workers.dev>
 - Repository: <https://github.com/g1mliii/pantryos>
-- YouTube demo: **add after upload and signed-out check**
+- Vimeo demo: <https://vimeo.com/1223495411>
+
+## Final submission status
+
+- [x] Deployed HTTPS app is live.
+- [x] Public repository and visible MIT license are live.
+- [x] The deployed page exposes all fourteen WebMCP tools from the final commit.
+- [x] Public Vimeo video plays while signed out.
+- [ ] Vimeo video is embedded on Devpost and plays in the submission preview.
+- [ ] Devpost entry shows the terminal **Submitted** state.
 
 ## Project name
 
@@ -48,9 +57,9 @@ The activity rail shows what's running and what just ran. Both sides go through 
 
 ### How it's built
 
-Client-only React and TypeScript SPA on Cloudflare Workers Static Assets. Zustand persists inventory, saved recipes, and groceries to `localStorage`. Thirteen imperative WebMCP tools register after hydration through `document.modelContext`, with one isolated adapter for the deprecated navigator surface.
+Client-only React and TypeScript SPA on Cloudflare Workers Static Assets. Zustand persists inventory, saved recipes, and groceries to `localStorage`. Fourteen imperative WebMCP tools register after hydration through `document.modelContext`, with one isolated adapter for the deprecated navigator surface.
 
-Every input is validated with Zod and published with a matching closed JSON Schema. Callbacks read current Zustand state when they run, return structured results for success and failure, mark user-authored output as untrusted, clean up on abort, and call the same domain actions the UI does. Registration, persistence recovery, payload caps, ambiguous identifiers, bad dates and units, hostile-looking text, deduplication, confirmation races, and every tool's success and error paths are covered by automated regressions. The final release checklist repeats the native WebMCP browser pass against the exact deployed 13-tool build.
+Every input is validated with Zod and published with a matching closed JSON Schema. Callbacks read current Zustand state when they run, return structured results for success and failure, mark user-authored output as untrusted, clean up on abort, and call the same domain actions the UI does. Registration, persistence recovery, payload caps, ambiguous identifiers, bad dates and units, hostile-looking text, deduplication, confirmation races, and every tool's success and error paths are covered by automated regressions.
 
 PantryOS doesn't upload kitchen data itself. Once you invoke a tool, its inputs and results go through whatever agent or AI provider you're using. Recipe images are a browser upload and never appear in a tool result.
 
@@ -62,7 +71,7 @@ Kitchen apps store lists well enough, but you're still the one joining up expiry
 
 ### What it does
 
-Tracks local inventory and expiry, suggests meals that use food in time, manages rich saved recipes, scales quantities, converts units, and adds only the missing groceries. Thirteen WebMCP tools give an agent the same reads and writes you have, with visible activity and a human confirmation before anything is removed.
+Tracks local inventory and expiry, suggests meals that use food in time, manages rich saved recipes, scales quantities, converts units, and adds only the missing groceries. Fourteen WebMCP tools give an agent the same reads and writes you have, with visible activity, tightly scoped navigation, and a human confirmation before anything is removed.
 
 ### How we built it
 
@@ -74,11 +83,11 @@ Most of the difficulty sat between a fast agent workflow and predictable applica
 
 ### Accomplishments we're proud of
 
-- Thirteen non-trivial tools working against live persisted browser state.
+- Fourteen tools working against live persisted browser state, including tightly scoped navigation to PantryOS views and exact recipes.
 - UI and tools stay in sync because they share domain actions.
 - Destructive removal fails closed and needs visible approval.
 - Recipes saved from either side take part in matching, scaling, conversion, and grocery planning.
-- 149 automated tests pass. The historical native-WebMCP browser pass covers malformed input, cancellation, persistence, confirmation races, payload caps, and adversarial text; the two new saved-recipe lifecycle tools still need their fresh deployed browser pass.
+- 153 automated tests cover the fourteen-tool build. The broader native-browser checklist covers malformed input, cancellation, persistence, confirmation races, payload caps, and adversarial text.
 
 ### What we learned
 
@@ -94,7 +103,7 @@ WebMCP, React, TypeScript, Vite, React Router, Zustand, Zod, date-fns, Tailwind 
 
 ## Judge walkthrough
 
-1. Open the live URL in ChatGPT's in-app browser, or Chrome 149+ with WebMCP testing enabled.
+1. Open the live URL in an AI agent desktop application with a WebMCP-capable built-in browser. Judges can use ChatGPT's in-app browser, or Chrome 149+ with WebMCP testing enabled.
 2. Hit **Start demo over** for a clean sample kitchen.
 3. Ask: "Find dinner under 30 minutes that uses what expires first and needs at most two new ingredients." Chicken Saag should come first, at 27 minutes with five of seven required ingredients.
 4. Ask: "Show me what I need for the chicken saag," then "Add whatever I'm missing to groceries." Ginger and fresh tomato get added once.
@@ -104,7 +113,9 @@ WebMCP, React, TypeScript, Vite, React Router, Zustand, Zod, date-fns, Tailwind 
 
 ## Video plan
 
-Aim for a 2:40–2:50 cut with audio throughout. Record the deployed HTTPS app. Attach the recipe card before recording so upload time and the file picker don't end up in the take.
+Aim for a 2:40–2:45 final cut so there is comfortable room below the three-minute limit. Record the deployed HTTPS app as six short clips, then trim and join them. Narrate the finished video clearly; do not add music.
+
+Use the self-authored text fixture below as the reliable main take. Paste it into the AI conversation or turn it into a plain recipe-card image you own. If using an image, attach it before rolling so the file picker and upload time are not recorded.
 
 ### Recording fixture
 
@@ -128,65 +139,106 @@ Warm the flatbreads and fill them with the yogurt mixture.
 Serve with lemon if using.
 ```
 
-### 0:00–0:20 — Set it up
+### OBS setup
 
-Show the dashboard, food expiring in the next few days, the AI panel ready, activity empty.
+- Set both canvas and output to 1920×1080 at 30 FPS.
+- Capture the whole display if the AI conversation and built-in browser share one desktop window. This is the safest way to keep tool results and PantryOS confirmation dialogs in frame.
+- Record the microphone and confirm its meter moves without clipping. Make a ten-second test recording and listen to it before the real take.
+- Record to MKV so a crash does not ruin the take, then use **File → Remux Recordings** to create the MP4 for editing or upload.
+- Hide notifications, bookmarks, account details, private tabs, local paths, and unrelated desktop icons. Use a clean browser window at a readable zoom.
+- Record each section below as a separate clip with three seconds of stillness at the beginning and end. Re-record only the clip that goes wrong.
 
-> "This is PantryOS, a local-first kitchen where you and your browser agent work on the same live inventory. Rather than guessing from the screen, the agent gets thirteen structured WebMCP tools backed by the same actions the interface uses."
+### Before the first clip
 
-### 0:20–0:58 — Conversation into state
+1. In the ChatGPT desktop application, open a fresh chat but do not send anything yet.
+2. In the built-in browser, open PantryOS once and select **Start demo over**. Confirm the fixture has 600 g chicken, 200 g spinach, 400 g Greek yogurt, no groceries, and no saved Green Yogurt Flatbreads recipe.
+3. Return to the empty ChatGPT chat. Keep the PantryOS browser tab available throughout the recording.
+4. Copy the connection prompt and recipe fixture somewhere private so you can paste them quickly without showing notes on screen.
+5. Rehearse the exact flow once, reset PantryOS again, and then record the clean clips.
 
-With the card already attached:
+### Clip 1 · 0:00–0:22 — Connect ChatGPT to PantryOS
+
+**Show ChatGPT:** Start on the fresh desktop chat. Paste and send:
+
+> "Open https://pantryos.pressplay-subai.workers.dev in the built-in browser and use its site tools."
+
+Show the built-in browser opening PantryOS. Pause briefly on the dashboard with expiring food visible and the AI panel reporting that the assistant is ready.
+
+**Narrate:**
+
+> "This is PantryOS, a local-first kitchen where ChatGPT and I work on the same live inventory. Its structured WebMCP tools call the same actions as the visible app."
+
+### Clip 2 · 0:22–1:00 — Save and open a recipe
+
+**Show ChatGPT:** Paste the Green Yogurt Flatbreads fixture from above and send:
 
 > "Save this recipe to PantryOS, then show me what you saved."
 
-Show `add_recipe` completing, open Recipes, select Green Yogurt Flatbreads.
+Show `add_recipe` completing, then show the built-in browser automatically opening the newly saved Green Yogurt Flatbreads recipe.
 
-> "The agent reads the recipe out of our conversation and saves structured timings, ingredients, and directions into PantryOS. That's persistent application state now, not text stuck in a chat."
+**Narrate:**
 
-### 0:58–1:30 — Scale and convert
+> "ChatGPT turns the recipe from our conversation into structured PantryOS data. The same tool saves it to persistent browser state and takes me directly to the new recipe."
 
-On the recipe page, go from two servings to four and switch to metric. Spinach moves from 7 oz to about 397 g, yogurt from 1 cup to 480 ml.
+### Clip 3 · 1:00–1:27 — Use the human interface
 
-> "The same recipe scales and converts in the human interface. PantryOS knows which ingredients are already here, which are optional, and which are still missing."
+**Show PantryOS:** On the saved recipe page, change two servings to four, then switch the units to metric. Pause on the changed amounts: spinach becomes about 397 grams and yogurt becomes 480 millilitres.
 
-### 1:30–1:58 — Only what's missing
+**Narrate:**
+
+> "I can keep working in the normal interface. PantryOS scales the recipe from two servings to four and converts the original US measurements to metric."
+
+### Clip 4 · 1:27–1:57 — Let the agent plan the groceries
+
+**Show ChatGPT:** Return to the same conversation and send:
 
 > "Add what I'm missing for four servings of that recipe."
 
-Open Groceries: four flatbreads added; spinach and yogurt skipped because they're in the kitchen, cumin skipped as a staple, lemon skipped as optional.
+Show ChatGPT completing `add_recipe_to_grocery_list`.
 
-> "It scales the recipe, checks what's in the kitchen, leaves out staples and optional items, and won't duplicate what's already on the list."
+**Then show PantryOS:** Open Groceries and show that four flatbreads were added. Spinach and yogurt were skipped because they are already in the kitchen, cumin was skipped as a staple, and lemon was skipped because it is optional.
 
-### 1:58–2:27 — Keep the human in control
+**Narrate:**
 
-> "The spinach went bad, throw it out."
+> "The agent carries the recipe context forward, checks the live kitchen, and adds only what is missing. It leaves out food I already have, staples, optional ingredients, and anything already on the list."
 
-Show the confirmation and approve it once.
+### Clip 5 · 1:57–2:27 — Hand control back to the person
 
-> "The agent can set the action up, but it can't remove food silently. PantryOS stops for the same confirmation the human interface uses."
+**Show ChatGPT:** Send:
 
-### 2:27–2:50 — Close
+> "The spinach went bad. Throw it out."
 
-Show Recent AI help, then the live URL and repo.
+Show the removal tool waiting for approval, then switch to the PantryOS confirmation dialog.
 
-> "Every tool has a bounded JSON Schema plus Zod validation, reads current state, returns structured errors, and cleans up on abort. PantryOS is a look at how WebMCP can turn an ordinary local-first app into something you and an agent can share."
+**Show PantryOS:** Personally select the confirmation button once. Show the successful result and the updated Kitchen screen.
+
+**Narrate:**
+
+> "ChatGPT can prepare the change, but it cannot silently remove food. PantryOS hands the decision back to me and changes the kitchen only after I approve it on the page."
+
+### Clip 6 · 2:27–2:47 — Show the shared history and close
+
+**Show PantryOS:** Display Recent AI help with the saved recipe, grocery planning, and removal actions. Finish with the live URL and repository visible long enough to read.
+
+**Narrate:**
+
+> "The conversation, the interface, and the activity history all reflect the same browser state because they use the same PantryOS actions. That's what WebMCP adds: a real product that a person and an agent can use together."
 
 ## Backup flow
 
-If image extraction or agent latency makes the creation sequence flaky while recording, fall back to the first six steps of the judge walkthrough. That path has a fixed seed and has been rehearsed. Don't splice a failed take into the final cut.
+If image extraction is unreliable, paste the exact text fixture instead; this still demonstrates the `add_recipe` workflow. If a tool call is slow, record the prompt and completed result as adjacent clips while keeping the true result visible—do not recreate or fake output. The fixed-seed Chicken Saag flow in the judge walkthrough is the final fallback, but keep the scaling or missing-only grocery section so a Phase 5/6 differentiator remains visible.
 
 ## Recording and submission checklist
 
 - Deploy the exact commit before recording.
 - Record the deployed HTTPS app, not localhost.
 - Fresh demo reset; close private tabs and notifications.
-- Keep the cut under 3:00 with clear audio.
+- Keep the final cut below 3:00, with clear English narration and no unlicensed music or third-party recipe-card artwork. The published cut is 2:55.
 - Trim waiting time, but leave enough of each tool call visible to show it's real.
 - No browser profiles, credentials, local paths, or private attachments on screen.
 - End on the live URL and repo URL.
-- Upload to YouTube as **Public** and check it while signed out.
-- Add the YouTube URL here, to the README, and to Devpost.
+- Upload to Vimeo as **Public**, allow embedding, and check it while signed out.
+- Add the Vimeo URL here, to the README, and to Devpost.
 - Check the live app, repo, license, and video links while signed out.
-- Confirm the Devpost entry actually reaches **Submitted** before the deadline.
+- Confirm the Devpost entry actually reaches **Submitted** before September 3, 2026 at 1:00 PM PDT / 4:00 PM Toronto time. A saved draft is not submitted.
 - Once submissions close, don't touch Devpost, the repo, or the live site until winners are announced. Fork it if you want to keep working.
