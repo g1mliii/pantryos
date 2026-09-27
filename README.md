@@ -1,10 +1,25 @@
-# PantryOS
+<h1 align="center">PantryOS</h1>
 
-[![CI](https://github.com/g1mliii/pantryos/actions/workflows/ci.yml/badge.svg)](https://github.com/g1mliii/pantryos/actions/workflows/ci.yml)
+<p align="center">
+  <b>The kitchen you and your AI agent share.</b><br />
+  Inventory, recipes and groceries in one local-first app, driven by hand or by any agent through WebMCP.
+</p>
+
+<p align="center">
+  <a href="https://pantryos.pressplay-subai.workers.dev"><img src="https://img.shields.io/badge/Open_PantryOS-live_app-2F5D50?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Open PantryOS" /></a>
+  <a href="https://vimeo.com/1223495411"><img src="https://img.shields.io/badge/Watch_the_demo-2:55-1AB7EA?style=for-the-badge&logo=vimeo&logoColor=white" alt="Watch the 2:55 demo" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/g1mliii/pantryos/actions/workflows/ci.yml"><img src="https://github.com/g1mliii/pantryos/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/WebMCP-14_tools-2F5D50?style=flat-square" alt="14 WebMCP tools" />
+  <img src="https://img.shields.io/badge/local--first-no_account-2F5D50?style=flat-square" alt="Local-first, no account" />
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/g1mliii/pantryos?style=flat-square&color=2F5D50" alt="Licence" /></a>
+</p>
+
+---
 
 PantryOS is a local-first kitchen manager where people and browser agents share the same inventory, recipes, and grocery list through WebMCP.
-
-**[Open PantryOS](https://pantryos.pressplay-subai.workers.dev)** · **[Watch the 2:55 demo](https://vimeo.com/1223495411)**
 
 ## What it does
 
